@@ -5,7 +5,7 @@ using Nethermind.Synchronization.ParallelSync;
 
 namespace Nethermind.Synchronization.Test.ParallelSync
 {
-    public partial class MultiSyncModeSelectorTestsBase(bool needToWaitForHeaders)
+    public partial class MultiSyncModeSelectorTestsBase
     {
         public enum FastBlocksState
         {
@@ -15,7 +15,12 @@ namespace Nethermind.Synchronization.Test.ParallelSync
             FinishedReceipts
         }
 
-        protected readonly bool _needToWaitForHeaders = needToWaitForHeaders;
+        protected readonly bool _needToWaitForHeaders;
+
+        public MultiSyncModeSelectorTestsBase(bool needToWaitForHeaders)
+        {
+            _needToWaitForHeaders = needToWaitForHeaders;
+        }
 
         protected SyncMode GetExpectationsIfNeedToWaitForHeaders(SyncMode expectedSyncModes)
         {

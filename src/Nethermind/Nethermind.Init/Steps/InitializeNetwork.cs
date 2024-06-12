@@ -144,7 +144,6 @@ public class InitializeNetwork : IStep
 
             _api.Synchronizer ??= new Synchronizer(
                 _api.DbProvider,
-                _api.NodeStorageFactory.WrapKeyValueStore(_api.DbProvider.StateDb),
                 _api.SpecProvider!,
                 _api.BlockTree,
                 _api.ReceiptStorage!,
@@ -202,7 +201,7 @@ public class InitializeNetwork : IStep
             }
         });
 
-        if (_syncConfig.SnapSync && _syncConfig.SnapServingEnabled != true)
+        if (_syncConfig.SnapSync && !_syncConfig.SnapServingEnabled)
         {
             SnapCapabilitySwitcher snapCapabilitySwitcher =
                 new(_api.ProtocolsManager, _api.SyncModeSelector, _api.LogManager);
@@ -504,7 +503,7 @@ public class InitializeNetwork : IStep
         PooledTxsRequestor pooledTxsRequestor = new(_api.TxPool!, _api.Config<ITxPoolConfig>());
 
         ISnapServer? snapServer = null;
-        if (_syncConfig.SnapServingEnabled == true)
+        if (_syncConfig.SnapServingEnabled)
         {
             // TODO: Add a proper config for the state persistence depth.
             snapServer = new SnapServer(_api.TrieStore!.AsReadOnly(), _api.DbProvider.CodeDb, new LastNStateRootTracker(_api.BlockTree, 128), _api.LogManager);
@@ -529,7 +528,7 @@ public class InitializeNetwork : IStep
             _api.LogManager,
             _api.TxGossipPolicy);
 
-        if (_syncConfig.SnapServingEnabled == true)
+        if (_syncConfig.SnapServingEnabled)
         {
             _api.ProtocolsManager!.AddSupportedCapability(new Capability(Protocol.Snap, 1));
         }

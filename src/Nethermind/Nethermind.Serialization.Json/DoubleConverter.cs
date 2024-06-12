@@ -6,7 +6,6 @@ using System;
 namespace Nethermind.Serialization.Json
 {
     using Nethermind.Core.Collections;
-    using System.Globalization;
     using System.Runtime.CompilerServices;
     using System.Text.Json;
     using System.Text.Json.Serialization;
@@ -27,7 +26,7 @@ namespace Nethermind.Serialization.Json
             double value,
             JsonSerializerOptions options)
         {
-            writer.WriteRawValue(value.ToString("0.0#########", CultureInfo.InvariantCulture), skipInputValidation: true);
+            writer.WriteRawValue(value.ToString("0.0#########"), skipInputValidation: true);
         }
     }
 
@@ -74,7 +73,7 @@ namespace Nethermind.Serialization.Json
             writer.WriteStartArray();
             foreach (double value in values)
             {
-                writer.WriteRawValue(value.ToString("0.0#########", CultureInfo.InvariantCulture), skipInputValidation: true);
+                writer.WriteRawValue(value.ToString("0.0#########"), skipInputValidation: true);
             }
             writer.WriteEndArray();
         }

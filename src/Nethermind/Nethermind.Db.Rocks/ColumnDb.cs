@@ -17,7 +17,7 @@ public class ColumnDb : IDb
     internal readonly DbOnTheRocks _mainDb;
     internal readonly ColumnFamilyHandle _columnFamily;
 
-    private readonly DbOnTheRocks.IteratorManager _iteratorManager;
+    private readonly DbOnTheRocks.ManagedIterators _readaheadIterators = new();
 
     public ColumnDb(RocksDb rocksDb, DbOnTheRocks mainDb, string name)
     {
@@ -26,20 +26,18 @@ public class ColumnDb : IDb
         if (name == "Default") name = "default";
         _columnFamily = _rocksDb.GetColumnFamily(name);
         Name = name;
-
-        _iteratorManager = new DbOnTheRocks.IteratorManager(_rocksDb, _columnFamily, _mainDb._readAheadReadOptions);
     }
 
     public void Dispose()
     {
-        _iteratorManager.Dispose();
+        _readaheadIterators.DisposeAll();
     }
 
     public string Name { get; }
 
     public byte[]? Get(ReadOnlySpan<byte> key, ReadFlags flags = ReadFlags.None)
     {
-        return _mainDb.GetWithColumnFamily(key, _columnFamily, _iteratorManager, flags);
+        return _mainDb.GetWithColumnFamily(key, _columnFamily, _readaheadIterators, flags);
     }
 
     public Span<byte> GetSpan(ReadOnlySpan<byte> key, ReadFlags flags = ReadFlags.None)

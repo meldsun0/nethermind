@@ -6,7 +6,6 @@ using System;
 using Nethermind.Serialization.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Nethermind.Core.Extensions;
 using Nethermind.JsonRpc.Modules.Subscribe;
 using Nethermind.Int256;
 
@@ -16,17 +15,24 @@ namespace Nethermind.JsonRpc
     [JsonDerivedType(typeof(JsonRpcSuccessResponse))]
     [JsonDerivedType(typeof(JsonRpcErrorResponse))]
     [JsonDerivedType(typeof(JsonRpcSubscriptionResponse))]
-    public class JsonRpcResponse(Action? action = null) : IDisposable
+    public class JsonRpcResponse : IDisposable
     {
+        private Action? _disposableAction;
+
+        public JsonRpcResponse(Action? disposableAction = null)
+        {
+            _disposableAction = disposableAction;
+        }
+
         public void AddDisposable(Action disposableAction)
         {
-            if (action is null)
+            if (_disposableAction is null)
             {
-                action = disposableAction;
+                _disposableAction = disposableAction;
             }
             else
             {
-                action += disposableAction;
+                _disposableAction += disposableAction;
             }
         }
 
@@ -45,8 +51,8 @@ namespace Nethermind.JsonRpc
 
         public virtual void Dispose()
         {
-            action?.Invoke();
-            action = null;
+            _disposableAction?.Invoke();
+            _disposableAction = null;
         }
     }
 
@@ -66,7 +72,10 @@ namespace Nethermind.JsonRpc
 
         public override void Dispose()
         {
-            Result.TryDispose();
+            if (Result is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
             base.Dispose();
         }
     }

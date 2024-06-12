@@ -53,6 +53,7 @@ public class ReceiptSyncFeedTests
             PivotHash = pivot.Hash!.ToString(),
             PivotNumber = pivot.Number.ToString(),
             AncientBodiesBarrier = 0,
+            FastBlocks = true,
             DownloadBodiesInFastSync = true,
         };
 

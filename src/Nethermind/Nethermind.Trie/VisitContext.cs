@@ -4,7 +4,6 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Threading;
-using Nethermind.Core.Crypto;
 
 namespace Nethermind.Trie
 {
@@ -15,7 +14,7 @@ namespace Nethermind.Trie
         private int _visitedNodes;
 
         public int Level { get; internal set; }
-        public bool IsStorage { get; set; }
+        public bool IsStorage { get; internal set; }
         public int? BranchChildIndex { get; internal set; }
         public bool ExpectAccounts { get; init; }
         public int VisitedNodes => _visitedNodes;

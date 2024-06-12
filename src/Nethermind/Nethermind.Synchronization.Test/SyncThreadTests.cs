@@ -41,7 +41,6 @@ using BlockTree = Nethermind.Blockchain.BlockTree;
 using Nethermind.Synchronization.SnapSync;
 using Nethermind.Config;
 using Nethermind.Specs.ChainSpecStyle;
-using Nethermind.Trie;
 
 namespace Nethermind.Synchronization.Test
 {
@@ -352,7 +351,6 @@ namespace Nethermind.Synchronization.Test
                 logManager);
             Synchronizer synchronizer = new(
                 dbProvider,
-                new NodeStorage(dbProvider.StateDb),
                 MainnetSpecProvider.Instance,
                 tree,
                 NullReceiptStorage.Instance,

@@ -20,10 +20,10 @@ namespace Nethermind.Synchronization.Test
     [TestFixture, Parallelizable(ParallelScope.All)]
     public class SyncReportTest
     {
-        [Test]
-        public void Smoke(
-            [Values(true, false)]
-            bool fastSync)
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        [TestCase(false, false)]
+        public void Smoke(bool fastSync, bool fastBlocks)
         {
             ISyncPeerPool pool = Substitute.For<ISyncPeerPool>();
             pool.InitializedPeersCount.Returns(1);
@@ -41,6 +41,7 @@ namespace Nethermind.Synchronization.Test
 
             SyncConfig syncConfig = new()
             {
+                FastBlocks = fastBlocks,
                 FastSync = fastSync,
             };
 
@@ -61,10 +62,9 @@ namespace Nethermind.Synchronization.Test
             timer.Elapsed += Raise.Event();
         }
 
-        [Test]
-        public void Ancient_bodies_and_receipts_are_reported_correctly(
-            [Values(false, true)]
-            bool setBarriers)
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Ancient_bodies_and_receipts_are_reported_correctly(bool setBarriers)
         {
             CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
             ISyncPeerPool pool = Substitute.For<ISyncPeerPool>();
@@ -86,6 +86,7 @@ namespace Nethermind.Synchronization.Test
 
             SyncConfig syncConfig = new()
             {
+                FastBlocks = true,
                 FastSync = true,
                 PivotNumber = "100",
             };

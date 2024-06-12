@@ -29,6 +29,7 @@ namespace Nethermind.Consensus.AuRa
         private readonly ContractRewriter? _contractRewriter;
         private readonly ITxFilter _txFilter;
         private readonly ILogger _logger;
+        private IAuRaValidator? _auRaValidator;
 
         public AuRaBlockProcessor(
             ISpecProvider specProvider,
@@ -40,7 +41,6 @@ namespace Nethermind.Consensus.AuRa
             ILogManager logManager,
             IBlockTree blockTree,
             IWithdrawalProcessor withdrawalProcessor,
-            IAuRaValidator? auRaValidator,
             ITxFilter? txFilter = null,
             AuRaContractGasLimitOverride? gasLimitOverride = null,
             ContractRewriter? contractRewriter = null)
@@ -61,14 +61,17 @@ namespace Nethermind.Consensus.AuRa
             _txFilter = txFilter ?? NullTxFilter.Instance;
             _gasLimitOverride = gasLimitOverride;
             _contractRewriter = contractRewriter;
-            AuRaValidator = auRaValidator ?? new NullAuRaValidator();
             if (blockTransactionsExecutor is IBlockProductionTransactionsExecutor produceBlockTransactionsStrategy)
             {
                 produceBlockTransactionsStrategy.AddingTransaction += OnAddingTransaction;
             }
         }
 
-        public IAuRaValidator AuRaValidator { get; }
+        public IAuRaValidator AuRaValidator
+        {
+            get => _auRaValidator ?? new NullAuRaValidator();
+            set => _auRaValidator = value;
+        }
 
         protected override TxReceipt[] ProcessBlock(Block block, IBlockTracer blockTracer, ProcessingOptions options)
         {

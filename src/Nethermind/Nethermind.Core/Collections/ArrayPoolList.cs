@@ -277,15 +277,24 @@ public sealed class ArrayPoolList<T> : IList<T>, IList, IOwnedReadOnlyList<T>
 
     public static ArrayPoolList<T> Empty() => new(0);
 
-    private struct ArrayPoolListEnumerator(T[] array, int count) : IEnumerator<T>
+    private struct ArrayPoolListEnumerator : IEnumerator<T>
     {
-        private int _index = -1;
+        private readonly T[] _array;
+        private readonly int _count;
+        private int _index;
 
-        public bool MoveNext() => ++_index < count;
+        public ArrayPoolListEnumerator(T[] array, int count)
+        {
+            _array = array;
+            _count = count;
+            _index = -1;
+        }
+
+        public bool MoveNext() => ++_index < _count;
 
         public void Reset() => _index = -1;
 
-        public readonly T Current => array[_index];
+        public readonly T Current => _array[_index];
 
         readonly object IEnumerator.Current => Current!;
 
@@ -318,7 +327,7 @@ public sealed class ArrayPoolList<T> : IList<T>, IList, IOwnedReadOnlyList<T>
 
     ~ArrayPoolList()
     {
-        if (_capacity != 0 && !_disposed)
+        if (!_disposed)
         {
             throw new InvalidOperationException($"{nameof(ArrayPoolList<T>)} hasn't been disposed. Created {_creationStackTrace}");
         }

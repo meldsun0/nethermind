@@ -7,7 +7,6 @@ using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Nethermind.Core;
 using Nethermind.Core.Buffers;
-using Nethermind.Core.Crypto;
 using Nethermind.Serialization.Rlp;
 using Nethermind.Trie.Pruning;
 
@@ -28,9 +27,6 @@ namespace Nethermind.Trie
         internal void AcceptResolvedNode<TNodeContext>(ITreeVisitor<TNodeContext> visitor, in TNodeContext nodeContext, ITrieNodeResolver nodeResolver, SmallTrieVisitContext trieVisitContext, IList<(TrieNode, TNodeContext, SmallTrieVisitContext)> nextToVisit)
             where TNodeContext : struct, INodeContext<TNodeContext>
         {
-            // Note: The path is not maintained here, its just for a placeholder. This code is only used for BatchedTrieVisitor
-            // which should only be used with hash keys.
-            TreePath emptyPath = TreePath.Empty;
             switch (NodeType)
             {
                 case NodeType.Branch:
@@ -40,10 +36,10 @@ namespace Nethermind.Trie
 
                         for (int i = 0; i < BranchesCount; i++)
                         {
-                            TrieNode child = GetChild(nodeResolver, ref emptyPath, i);
+                            TrieNode child = GetChild(nodeResolver, i);
                             if (child is not null)
                             {
-                                child.ResolveKey(nodeResolver, ref emptyPath, false);
+                                child.ResolveKey(nodeResolver, false);
                                 TNodeContext childContext = nodeContext.Add((byte)i);
 
                                 if (visitor.ShouldVisit(childContext, child.Keccak!))
@@ -65,13 +61,13 @@ namespace Nethermind.Trie
                 case NodeType.Extension:
                     {
                         visitor.VisitExtension(nodeContext, this, trieVisitContext.ToVisitContext());
-                        TrieNode child = GetChild(nodeResolver, ref emptyPath, 0);
+                        TrieNode child = GetChild(nodeResolver, 0);
                         if (child is null)
                         {
                             throw new InvalidDataException($"Child of an extension {Key} should not be null.");
                         }
 
-                        child.ResolveKey(nodeResolver, ref emptyPath, false);
+                        child.ResolveKey(nodeResolver, false);
                         TNodeContext childContext = nodeContext.Add(Key!);
                         if (visitor.ShouldVisit(childContext, child.Keccak!))
                         {
@@ -105,20 +101,17 @@ namespace Nethermind.Trie
                             if (account.HasStorage && visitor.ShouldVisit(childContext, account.StorageRoot))
                             {
                                 trieVisitContext.IsStorage = true;
-                                TNodeContext storageContext = childContext.AddStorage(account.StorageRoot);
                                 trieVisitContext.Level++;
                                 trieVisitContext.BranchChildIndex = null;
 
-                                if (TryResolveStorageRoot(nodeResolver, ref emptyPath, out TrieNode? storageRoot))
+                                if (TryResolveStorageRoot(nodeResolver, out TrieNode? storageRoot))
                                 {
-                                    nextToVisit.Add((storageRoot!, storageContext, trieVisitContext));
+                                    nextToVisit.Add((storageRoot!, childContext, trieVisitContext));
                                 }
                                 else
                                 {
-                                    visitor.VisitMissingNode(storageContext, account.StorageRoot, trieVisitContext.ToVisitContext());
+                                    visitor.VisitMissingNode(childContext, account.StorageRoot, trieVisitContext.ToVisitContext());
                                 }
-
-                                trieVisitContext.IsStorage = false;
                             }
                         }
 
@@ -130,17 +123,17 @@ namespace Nethermind.Trie
             }
         }
 
-        internal void Accept(ITreeVisitor visitor, ITrieNodeResolver nodeResolver, ref TreePath path, TrieVisitContext trieVisitContext)
+        internal void Accept(ITreeVisitor visitor, ITrieNodeResolver nodeResolver, TrieVisitContext trieVisitContext)
         {
-            Accept(new ContextNotAwareTreeVisitor(visitor), default, nodeResolver, ref path, trieVisitContext);
+            Accept(new ContextNotAwareTreeVisitor(visitor), default, nodeResolver, trieVisitContext);
         }
 
-        internal void Accept<TNodeContext>(ITreeVisitor<TNodeContext> visitor, in TNodeContext nodeContext, ITrieNodeResolver nodeResolver, ref TreePath path, TrieVisitContext trieVisitContext)
+        internal void Accept<TNodeContext>(ITreeVisitor<TNodeContext> visitor, in TNodeContext nodeContext, ITrieNodeResolver nodeResolver, TrieVisitContext trieVisitContext)
             where TNodeContext : struct, INodeContext<TNodeContext>
         {
             try
             {
-                ResolveNode(nodeResolver, path);
+                ResolveNode(nodeResolver);
             }
             catch (TrieException)
             {
@@ -148,26 +141,25 @@ namespace Nethermind.Trie
                 return;
             }
 
-            ResolveKey(nodeResolver, ref path, trieVisitContext.Level == 0);
+            ResolveKey(nodeResolver, trieVisitContext.Level == 0);
 
             switch (NodeType)
             {
                 case NodeType.Branch:
                     {
                         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                        void VisitChild(ref TreePath path, int i, TrieNode? child, ITrieNodeResolver resolver, ITreeVisitor<TNodeContext> v, in TNodeContext nodeContext, TrieVisitContext context)
+                        void VisitChild(int i, TrieNode? child, ITrieNodeResolver resolver, ITreeVisitor<TNodeContext> v, in TNodeContext nodeContext, TrieVisitContext context)
                         {
                             if (child is not null)
                             {
-                                int previousPathLength = AppendChildPath(ref path, i);
-                                child.ResolveKey(resolver, ref path, false);
+                                child.ResolveKey(resolver, false);
                                 TNodeContext childContext = nodeContext.Add((byte)i);
+
                                 if (v.ShouldVisit(childContext, child.Keccak!))
                                 {
                                     context.BranchChildIndex = i;
-                                    child.Accept(v, childContext, resolver, ref path, context);
+                                    child.Accept(v, childContext, resolver, context);
                                 }
-                                path.TruncateMut(previousPathLength);
 
                                 if (child.IsPersisted)
                                 {
@@ -177,17 +169,17 @@ namespace Nethermind.Trie
                         }
 
                         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                        void VisitSingleThread(ref TreePath parentPath, ITreeVisitor<TNodeContext> treeVisitor, in TNodeContext nodeContext, ITrieNodeResolver trieNodeResolver, TrieVisitContext visitContext)
+                        void VisitSingleThread(ITreeVisitor<TNodeContext> treeVisitor, in TNodeContext nodeContext, ITrieNodeResolver trieNodeResolver, TrieVisitContext visitContext)
                         {
                             // single threaded route
                             for (int i = 0; i < BranchesCount; i++)
                             {
-                                VisitChild(ref parentPath, i, GetChild(trieNodeResolver, ref parentPath, i), trieNodeResolver, treeVisitor, nodeContext, visitContext);
+                                VisitChild(i, GetChild(trieNodeResolver, i), trieNodeResolver, treeVisitor, nodeContext, visitContext);
                             }
                         }
 
                         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-                        void VisitMultiThread(TreePath parentPath, ITreeVisitor<TNodeContext> treeVisitor, in TNodeContext nodeContext, ITrieNodeResolver trieNodeResolver, TrieVisitContext visitContext, TrieNode?[] children)
+                        void VisitMultiThread(ITreeVisitor<TNodeContext> treeVisitor, in TNodeContext nodeContext, ITrieNodeResolver trieNodeResolver, TrieVisitContext visitContext, TrieNode?[] children)
                         {
                             var copy = nodeContext;
 
@@ -197,37 +189,16 @@ namespace Nethermind.Trie
                                 visitContext.Semaphore.Wait();
                                 try
                                 {
-                                    TreePath closureParentPath = parentPath;
                                     // we need to have separate context for each thread as context tracks level and branch child index
                                     TrieVisitContext childContext = visitContext.Clone();
-                                    VisitChild(ref closureParentPath, i, children[i], trieNodeResolver, treeVisitor, copy, childContext);
+
+                                    VisitChild(i, children[i], trieNodeResolver, treeVisitor, copy, childContext);
                                 }
                                 finally
                                 {
                                     visitContext.Semaphore.Release();
                                 }
                             });
-                        }
-
-                        static void VisitAllSingleThread(TrieNode currentNode, ref TreePath path, ITreeVisitor<TNodeContext> visitor, TNodeContext nodeContext, ITrieNodeResolver nodeResolver, TrieVisitContext visitContext)
-                        {
-                            TrieNode?[] output = new TrieNode?[16];
-                            currentNode.ResolveAllChildBranch(nodeResolver, ref path, output);
-                            currentNode.AppendChildPathBranch(ref path, 0);
-                            for (int i = 0; i < 16; i++)
-                            {
-                                if (output[i] == null) continue;
-                                TrieNode child = output[i];
-                                path.SetLast(i);
-                                child.ResolveKey(nodeResolver, ref path, false);
-                                TNodeContext childContext = nodeContext.Add((byte)i);
-                                if (visitor.ShouldVisit(childContext, child.Keccak!))
-                                {
-                                    visitContext.BranchChildIndex = i;
-                                    child.Accept(visitor, childContext, nodeResolver, ref path, visitContext);
-                                }
-                            }
-                            path.TruncateOne();
                         }
 
                         visitor.VisitBranch(nodeContext, this, trieVisitContext);
@@ -240,28 +211,21 @@ namespace Nethermind.Trie
                             TrieNode?[] children = new TrieNode?[BranchesCount];
                             for (int i = 0; i < BranchesCount; i++)
                             {
-                                children[i] = GetChild(nodeResolver, ref path, i);
+                                children[i] = GetChild(nodeResolver, i);
                             }
 
                             if (trieVisitContext.Semaphore.CurrentCount > 1)
                             {
-                                VisitMultiThread(path, visitor, nodeContext, nodeResolver, trieVisitContext, children);
+                                VisitMultiThread(visitor, nodeContext, nodeResolver, trieVisitContext, children);
                             }
                             else
                             {
-                                VisitSingleThread(ref path, visitor, nodeContext, nodeResolver, trieVisitContext);
+                                VisitSingleThread(visitor, nodeContext, nodeResolver, trieVisitContext);
                             }
                         }
                         else
                         {
-                            if (visitor.IsRangeScan)
-                            {
-                                VisitAllSingleThread(this, ref path, visitor, nodeContext, nodeResolver, trieVisitContext);
-                            }
-                            else
-                            {
-                                VisitSingleThread(ref path, visitor, nodeContext, nodeResolver, trieVisitContext);
-                            }
+                            VisitSingleThread(visitor, nodeContext, nodeResolver, trieVisitContext);
                         }
 
                         trieVisitContext.Level--;
@@ -273,23 +237,21 @@ namespace Nethermind.Trie
                     {
                         visitor.VisitExtension(nodeContext, this, trieVisitContext);
                         trieVisitContext.AddVisited();
-                        TrieNode child = GetChild(nodeResolver, ref path, 0);
+                        TrieNode child = GetChild(nodeResolver, 0);
                         if (child is null)
                         {
                             throw new InvalidDataException($"Child of an extension {Key} should not be null.");
                         }
 
-                        int previousPathLength = AppendChildPath(ref path, 0);
-                        child.ResolveKey(nodeResolver, ref path, false);
+                        child.ResolveKey(nodeResolver, false);
                         TNodeContext childContext = nodeContext.Add(Key!);
                         if (visitor.ShouldVisit(childContext, child.Keccak!))
                         {
                             trieVisitContext.Level++;
                             trieVisitContext.BranchChildIndex = null;
-                            child.Accept(visitor, childContext, nodeResolver, ref path, trieVisitContext);
+                            child.Accept(visitor, childContext, nodeResolver, trieVisitContext);
                             trieVisitContext.Level--;
                         }
-                        path.TruncateMut(previousPathLength);
 
                         break;
                     }
@@ -315,24 +277,13 @@ namespace Nethermind.Trie
 
                             if (account.HasStorage && visitor.ShouldVisit(leafContext, account.StorageRoot))
                             {
+                                trieVisitContext.IsStorage = true;
                                 trieVisitContext.Level++;
                                 trieVisitContext.BranchChildIndex = null;
 
-                                if (TryResolveStorageRoot(nodeResolver, ref path, out TrieNode? storageRoot))
+                                if (TryResolveStorageRoot(nodeResolver, out TrieNode? storageRoot))
                                 {
-                                    Hash256 storageAccount;
-                                    using (path.ScopedAppend(Key))
-                                    {
-                                        storageAccount = path.Path.ToCommitment();
-                                    }
-
-                                    trieVisitContext.IsStorage = true;
-
-                                    TNodeContext storageContext = leafContext.AddStorage(storageAccount);
-                                    TreePath emptyPath = TreePath.Empty;
-                                    storageRoot!.Accept(visitor, storageContext, nodeResolver.GetStorageTrieNodeResolver(storageAccount), ref emptyPath, trieVisitContext);
-
-                                    trieVisitContext.IsStorage = false;
+                                    storageRoot!.Accept(visitor, leafContext, nodeResolver, trieVisitContext);
                                 }
                                 else
                                 {
@@ -340,6 +291,7 @@ namespace Nethermind.Trie
                                 }
 
                                 trieVisitContext.Level--;
+                                trieVisitContext.IsStorage = false;
                             }
                         }
 

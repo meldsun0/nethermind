@@ -7,11 +7,11 @@ using System.Text.Json.Serialization;
 
 using Nethermind.Serialization.Json;
 
-namespace Nethermind.Evm.Tracing.GethStyle.Custom;
+namespace Nethermind.Evm.Tracing.GethStyle.JavaScript;
 
-public class GethLikeCustomTraceConverter : JsonConverter<GethLikeCustomTrace>
+public class GethLikeJavaScriptTraceConverter : JsonConverter<GethLikeJavaScriptTrace>
 {
-    public override void Write(Utf8JsonWriter writer, GethLikeCustomTrace value, JsonSerializerOptions options)
+    public override void Write(Utf8JsonWriter writer, GethLikeJavaScriptTrace value, JsonSerializerOptions options)
     {
         if (value is null)
         {
@@ -31,7 +31,7 @@ public class GethLikeCustomTraceConverter : JsonConverter<GethLikeCustomTrace>
         }
     }
 
-    public override GethLikeCustomTrace? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    public override GethLikeJavaScriptTrace? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         throw new NotSupportedException();
     }

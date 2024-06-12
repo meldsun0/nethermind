@@ -199,8 +199,6 @@ namespace Nethermind.Merge.Plugin.Synchronization
                     break;
                 }
 
-                long bestProcessedBlock = 0;
-
                 for (int blockIndex = 0; blockIndex < blocks.Length; blockIndex++)
                 {
                     if (cancellation.IsCancellationRequested)
@@ -218,7 +216,7 @@ namespace Nethermind.Merge.Plugin.Synchronization
                     }
 
                     // can move this to block tree now?
-                    if (!_blockValidator.ValidateSuggestedBlock(currentBlock, out _))
+                    if (!_blockValidator.ValidateSuggestedBlock(currentBlock))
                     {
                         string message = $"{bestPeer} sent an invalid block {currentBlock.ToString(Block.Format.Short)}.";
                         if (_logger.IsWarn) _logger.Warn(message);
@@ -227,23 +225,18 @@ namespace Nethermind.Merge.Plugin.Synchronization
 
                     if (shouldProcess)
                     {
-                        // An edge case when we've got state already, but still downloading blocks before it.
-                        // We cannot process such blocks, but still we are requested to process them via blocksRequest.Options
-                        // So we'are detecting it and chaing from processing to receipts downloading
+                        // covering edge case during fastSyncTransition when we're trying to SuggestBlock without the state
                         bool headIsGenesis = _blockTree.Head?.IsGenesis ?? false;
-                        bool toBeProcessedHasNoProcessedParent = currentBlock.Number > (bestProcessedBlock + 1);
-                        bool isFastSyncTransition = headIsGenesis && toBeProcessedHasNoProcessedParent;
+                        bool toBeProcessedIsNotBlockOne = currentBlock.Number > 1;
+                        bool isFastSyncTransition = headIsGenesis && toBeProcessedIsNotBlockOne;
                         if (isFastSyncTransition)
                         {
                             long bestFullState = _fullStateFinder.FindBestFullState();
                             shouldProcess = currentBlock.Number > bestFullState && bestFullState != 0;
-                            if (!shouldProcess && !downloadReceipts)
+                            if (!shouldProcess)
                             {
-                                if (_logger.IsInfo) _logger.Info($"Skipping processing during fastSyncTransition, currentBlock: {currentBlock}, bestFullState: {bestFullState}, trying to load receipts");
+                                if (_logger.IsInfo) _logger.Info($"Skipping processing during fastSyncTransition, currentBlock: {currentBlock}, bestFullState: {bestFullState}");
                                 downloadReceipts = true;
-                                context.SetDownloadReceipts();
-                                await RequestReceipts(bestPeer, cancellation, context);
-                                receipts = context.ReceiptsForBlocks;
                             }
                         }
                     }
@@ -279,10 +272,6 @@ namespace Nethermind.Merge.Plugin.Synchronization
                         if (shouldProcess == false)
                         {
                             _blockTree.UpdateMainChain(new[] { currentBlock }, false);
-                        }
-                        else
-                        {
-                            bestProcessedBlock = currentBlock.Number;
                         }
 
                         TryUpdateTerminalBlock(currentBlock.Header, shouldProcess);

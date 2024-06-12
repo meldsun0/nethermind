@@ -15,7 +15,6 @@ using Nethermind.Logging;
 using Nethermind.JsonRpc;
 using Nethermind.Monitoring.Config;
 using Nethermind.Core.Extensions;
-using Nethermind.Merge.Plugin;
 
 namespace Nethermind.HealthChecks
 {
@@ -27,7 +26,6 @@ namespace Nethermind.HealthChecks
         private ILogger _logger;
         private IJsonRpcConfig _jsonRpcConfig;
         private IInitConfig _initConfig;
-        private IMergeConfig _mergeConfig;
 
         private ClHealthLogger _clHealthLogger;
         private FreeDiskSpaceChecker _freeDiskSpaceChecker;
@@ -68,7 +66,6 @@ namespace Nethermind.HealthChecks
             _healthChecksConfig = _api.Config<IHealthChecksConfig>();
             _jsonRpcConfig = _api.Config<IJsonRpcConfig>();
             _initConfig = _api.Config<IInitConfig>();
-            _mergeConfig = _api.Config<IMergeConfig>();
             _logger = api.LogManager.GetClassLogger();
 
             //will throw an exception and close app or block until enough disk space is available (LowStorageCheckAwaitOnStartup)
@@ -152,7 +149,7 @@ namespace Nethermind.HealthChecks
                 if (_logger.IsInfo) _logger.Info("Health RPC Module has been enabled");
             }
 
-            if (_mergeConfig.Enabled)
+            if (_api.SpecProvider!.TerminalTotalDifficulty is not null)
             {
                 _clHealthLogger = new ClHealthLogger(_nodeHealthService, _logger);
                 _clHealthLogger.StartAsync(default);

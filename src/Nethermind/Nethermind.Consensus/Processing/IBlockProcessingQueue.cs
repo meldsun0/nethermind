@@ -25,7 +25,7 @@ namespace Nethermind.Consensus.Processing
         /// </summary>
         event EventHandler ProcessingQueueEmpty;
 
-        event EventHandler<BlockRemovedEventArgs> BlockRemoved;
+        event EventHandler<BlockHashEventArgs> BlockRemoved;
 
         /// <summary>
         /// Number of blocks in the processing queue.

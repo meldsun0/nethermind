@@ -155,9 +155,7 @@ public class TxCertifierFilterTests
                 ReceiptStorage,
                 LimboLogs.Instance,
                 BlockTree,
-                NullWithdrawalProcessor.Instance,
-                null
-                );
+                NullWithdrawalProcessor.Instance);
         }
 
         protected override Task AddBlocksOnStart() => Task.CompletedTask;

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 
 using System;
-using Nethermind.Core.Extensions;
 
 namespace Nethermind.Core.Resettables;
 
@@ -12,7 +11,10 @@ public class DisposableResettableList<T> : ResettableList<T>, IDisposable
     {
         for (int index = 0; index < Count; index++)
         {
-            this[index].TryDispose();
+            if (this[index] is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
         }
     }
 }

@@ -23,7 +23,7 @@ namespace Nethermind.Consensus.AuRa
         private readonly IBlockTree _blockTree;
         private readonly IChainLevelInfoRepository _chainLevelInfoRepository;
         private readonly ILogger _logger;
-        private IBlockProcessor _blockProcessor;
+        private readonly IBlockProcessor _blockProcessor;
         private readonly IValidatorStore _validatorStore;
         private readonly IValidSealerStrategy _validSealerStrategy;
         private readonly long _twoThirdsMajorityTransition;
@@ -34,6 +34,7 @@ namespace Nethermind.Consensus.AuRa
         public AuRaBlockFinalizationManager(
             IBlockTree blockTree,
             IChainLevelInfoRepository chainLevelInfoRepository,
+            IBlockProcessor blockProcessor,
             IValidatorStore validatorStore,
             IValidSealerStrategy validSealerStrategy,
             ILogManager logManager,
@@ -42,19 +43,14 @@ namespace Nethermind.Consensus.AuRa
             _blockTree = blockTree ?? throw new ArgumentNullException(nameof(blockTree));
             _chainLevelInfoRepository = chainLevelInfoRepository ?? throw new ArgumentNullException(nameof(chainLevelInfoRepository));
             _logger = logManager?.GetClassLogger() ?? throw new ArgumentNullException(nameof(logManager));
+            _blockProcessor = blockProcessor ?? throw new ArgumentNullException(nameof(blockProcessor));
             _validatorStore = validatorStore ?? throw new ArgumentNullException(nameof(validatorStore));
             _validSealerStrategy = validSealerStrategy ?? throw new ArgumentNullException(nameof(validSealerStrategy));
             _twoThirdsMajorityTransition = twoThirdsMajorityTransition;
-            Initialize();
-        }
-
-        public void SetMainBlockProcessor(IBlockProcessor blockProcessor)
-        {
-            _blockProcessor = blockProcessor ?? throw new ArgumentNullException(nameof(blockProcessor));
             _blockProcessor.BlockProcessed += OnBlockProcessed;
             _blockProcessor.BlocksProcessing += OnBlocksProcessing;
+            Initialize();
         }
-
 
         private void Initialize()
         {

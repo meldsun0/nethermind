@@ -9,7 +9,6 @@ using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
-using FluentAssertions;
 using Nethermind.Evm.Tracing.GethStyle;
 using Nethermind.JsonRpc.Modules;
 using Nethermind.JsonRpc.WebSockets;
@@ -51,7 +50,7 @@ public class JsonRpcSocketsClientTests
                     jsonRpcLocalStats: new NullJsonRpcLocalStats(),
                     jsonSerializer: new EthereumJsonSerializer()
                 );
-                using JsonRpcResult result = JsonRpcResult.Single(bigObject, default);
+                JsonRpcResult result = JsonRpcResult.Single(bigObject, default);
 
                 return await client.SendJsonRpcResult(result);
             });
@@ -118,16 +117,13 @@ public class JsonRpcSocketsClientTests
                     jsonRpcLocalStats: new NullJsonRpcLocalStats(),
                     jsonSerializer: new EthereumJsonSerializer()
                 );
-                int disposeCount = 0;
+                JsonRpcResult result = JsonRpcResult.Single(RandomSuccessResponse(1_000), default);
 
                 for (int i = 0; i < messageCount; i++)
                 {
-                    using JsonRpcResult result = JsonRpcResult.Single(RandomSuccessResponse(1_000, () => disposeCount++), default);
                     await client.SendJsonRpcResult(result);
                     await Task.Delay(100);
                 }
-
-                disposeCount.Should().Be(messageCount);
                 cts.Cancel();
 
                 return messageCount;
@@ -291,7 +287,7 @@ public class JsonRpcSocketsClientTests
                     jsonRpcLocalStats: new NullJsonRpcLocalStats(),
                     jsonSerializer: new EthereumJsonSerializer()
                 );
-                using JsonRpcResult result = JsonRpcResult.Single(RandomSuccessResponse(1_000), default);
+                JsonRpcResult result = JsonRpcResult.Single(RandomSuccessResponse(1_000), default);
 
                 for (int i = 0; i < messageCount; i++)
                 {
@@ -335,7 +331,7 @@ public class JsonRpcSocketsClientTests
                     jsonRpcLocalStats: new NullJsonRpcLocalStats(),
                     jsonSerializer: new EthereumJsonSerializer()
                 );
-                using JsonRpcResult result = JsonRpcResult.Collection(RandomBatchResult(10, 100));
+                JsonRpcResult result = JsonRpcResult.Collection(RandomBatchResult(10, 100));
 
                 await client.SendJsonRpcResult(result);
 
@@ -375,7 +371,7 @@ public class JsonRpcSocketsClientTests
                     jsonSerializer: new EthereumJsonSerializer(),
                     maxBatchResponseBodySize: maxByteCount
                 );
-                using JsonRpcResult result = JsonRpcResult.Collection(RandomBatchResult(10, 100));
+                JsonRpcResult result = JsonRpcResult.Collection(RandomBatchResult(10, 100));
 
                 int sent = await client.SendJsonRpcResult(result);
 
@@ -468,9 +464,9 @@ public class JsonRpcSocketsClientTests
         );
     }
 
-    private static JsonRpcSuccessResponse RandomSuccessResponse(int size, Action? disposeAction = null)
+    private static JsonRpcSuccessResponse RandomSuccessResponse(int size)
     {
-        return new JsonRpcSuccessResponse(disposeAction)
+        return new JsonRpcSuccessResponse
         {
             MethodName = "mock",
             Id = "42",

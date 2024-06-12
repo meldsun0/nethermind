@@ -8,13 +8,18 @@ using Nethermind.Trie.Pruning;
 
 namespace Nethermind.Trie;
 
-public class TrieStoreWithReadFlags : TrieNodeResolverWithReadFlags, IScopedTrieStore
+public class TrieStoreWithReadFlags : TrieNodeResolverWithReadFlags, ITrieStore
 {
-    private IScopedTrieStore _baseImplementation;
+    private ITrieStore _baseImplementation;
 
-    public TrieStoreWithReadFlags(IScopedTrieStore implementation, ReadFlags flags) : base(implementation, flags)
+    public TrieStoreWithReadFlags(ITrieStore baseImplementation, ReadFlags readFlags) : base(baseImplementation, readFlags)
     {
-        _baseImplementation = implementation;
+        _baseImplementation = baseImplementation;
+    }
+
+    public void Dispose()
+    {
+        _baseImplementation.Dispose();
     }
 
     public void CommitNode(long blockNumber, NodeCommitInfo nodeCommitInfo, WriteFlags writeFlags = WriteFlags.None)
@@ -27,13 +32,29 @@ public class TrieStoreWithReadFlags : TrieNodeResolverWithReadFlags, IScopedTrie
         _baseImplementation.FinishBlockCommit(trieType, blockNumber, root, writeFlags);
     }
 
-    public bool IsPersisted(in TreePath path, in ValueHash256 keccak)
+    public bool IsPersisted(in ValueHash256 keccak)
     {
-        return _baseImplementation.IsPersisted(in path, in keccak);
+        return _baseImplementation.IsPersisted(in keccak);
     }
 
-    public void Set(in TreePath path, in ValueHash256 keccak, byte[] rlp)
+    public IReadOnlyTrieStore AsReadOnly(IKeyValueStore? keyValueStore = null) =>
+        _baseImplementation.AsReadOnly(keyValueStore);
+
+    public event EventHandler<ReorgBoundaryReached>? ReorgBoundaryReached
     {
-        _baseImplementation.Set(in path, in keccak, rlp);
+        add => _baseImplementation.ReorgBoundaryReached += value;
+        remove => _baseImplementation.ReorgBoundaryReached -= value;
+    }
+
+    public IReadOnlyKeyValueStore TrieNodeRlpStore => _baseImplementation.TrieNodeRlpStore;
+
+    public void Set(in ValueHash256 hash, byte[] rlp)
+    {
+        _baseImplementation.Set(in hash, rlp);
+    }
+
+    public bool HasRoot(Hash256 stateRoot)
+    {
+        return _baseImplementation.HasRoot(stateRoot);
     }
 }

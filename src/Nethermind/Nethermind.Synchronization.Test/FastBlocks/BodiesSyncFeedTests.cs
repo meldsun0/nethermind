@@ -60,6 +60,7 @@ public class BodiesSyncFeedTests
             PivotHash = _pivotBlock.Hash!.ToString(),
             PivotNumber = _pivotBlock.Number.ToString(),
             AncientBodiesBarrier = 0,
+            FastBlocks = true,
             DownloadBodiesInFastSync = true,
         };
 

@@ -169,6 +169,7 @@ namespace Nethermind.Facade.Test.Eth
             {
                 FastSync = true,
                 SnapSync = true,
+                FastBlocks = true,
                 PivotNumber = "0", // Equivalent to not having a pivot
             };
             EthSyncingInfo ethSyncingInfo = new(blockTree, receiptStorage, syncConfig,

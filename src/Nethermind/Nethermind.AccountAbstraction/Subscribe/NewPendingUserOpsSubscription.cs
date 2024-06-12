@@ -62,7 +62,8 @@ namespace Nethermind.AccountAbstraction.Subscribe
         {
             ScheduleAction(async () =>
             {
-                using JsonRpcResult result = _includeUserOperations
+                JsonRpcResult result;
+                result = _includeUserOperations
                     ? CreateSubscriptionMessage(new { UserOperation = new UserOperationRpc(e.UserOperation), e.EntryPoint })
                     : CreateSubscriptionMessage(new { UserOperation = e.UserOperation.RequestId, e.EntryPoint });
                 await JsonRpcDuplexClient.SendJsonRpcResult(result);

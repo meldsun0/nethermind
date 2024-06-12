@@ -27,6 +27,7 @@ public class BeaconPivotTests
         _syncConfig = new SyncConfig
         {
             FastSync = true,
+            FastBlocks = true,
             PivotNumber = "1000",
             PivotHash = Keccak.Zero.ToString(),
             PivotTotalDifficulty = "1000"

@@ -4,7 +4,6 @@
 using Nethermind.Consensus.Validators;
 using Nethermind.Core;
 using Nethermind.Logging;
-using System.Diagnostics.CodeAnalysis;
 
 namespace Nethermind.Merge.Plugin.InvalidChainTracker;
 
@@ -24,22 +23,18 @@ public class InvalidBlockInterceptor : IBlockValidator
         _logger = logManager.GetClassLogger(typeof(InvalidBlockInterceptor));
     }
 
-    public bool ValidateOrphanedBlock(Block block, [NotNullWhen(false)] out string? error) => _baseValidator.ValidateOrphanedBlock(block, out error);
+    public bool ValidateOrphanedBlock(Block block, out string? error) => _baseValidator.ValidateOrphanedBlock(block, out error);
 
     public bool Validate(BlockHeader header, BlockHeader? parent, bool isUncle = false)
     {
-        return Validate(header, parent, isUncle, out _);
-    }
-    public bool Validate(BlockHeader header, BlockHeader? parent, bool isUncle, [NotNullWhen(false)] out string? error)
-    {
-        bool result = _baseValidator.Validate(header, parent, isUncle, out error);
+        bool result = _baseValidator.Validate(header, parent, isUncle);
         if (!result)
         {
             if (_logger.IsTrace) _logger.Trace($"Intercepted a bad header {header}");
             if (ShouldNotTrackInvalidation(header))
             {
                 if (_logger.IsDebug) _logger.Debug($"Header invalidation should not be tracked");
-                return result;
+                return false;
             }
             _invalidChainTracker.OnInvalidBlock(header.Hash!, header.ParentHash);
         }
@@ -49,19 +44,14 @@ public class InvalidBlockInterceptor : IBlockValidator
 
     public bool Validate(BlockHeader header, bool isUncle = false)
     {
-        return Validate(header, isUncle, out _);
-    }
-
-    public bool Validate(BlockHeader header, bool isUncle, [NotNullWhen(false)] out string? error)
-    {
-        bool result = _baseValidator.Validate(header, isUncle, out error);
+        bool result = _baseValidator.Validate(header, isUncle);
         if (!result)
         {
             if (_logger.IsTrace) _logger.Trace($"Intercepted a bad header {header}");
             if (ShouldNotTrackInvalidation(header))
             {
                 if (_logger.IsDebug) _logger.Debug($"Header invalidation should not be tracked");
-                return result;
+                return false;
             }
             _invalidChainTracker.OnInvalidBlock(header.Hash!, header.ParentHash);
         }
@@ -71,39 +61,32 @@ public class InvalidBlockInterceptor : IBlockValidator
 
     public bool ValidateSuggestedBlock(Block block)
     {
-        return ValidateSuggestedBlock(block, out _);
-    }
-    public bool ValidateSuggestedBlock(Block block, [NotNullWhen(false)] out string? error)
-    {
-        bool result = _baseValidator.ValidateSuggestedBlock(block, out error);
+        bool result = _baseValidator.ValidateSuggestedBlock(block);
         if (!result)
         {
             if (_logger.IsTrace) _logger.Trace($"Intercepted a bad block {block}");
             if (ShouldNotTrackInvalidation(block))
             {
                 if (_logger.IsDebug) _logger.Debug($"Block invalidation should not be tracked");
-                return result;
+                return false;
             }
             _invalidChainTracker.OnInvalidBlock(block.Hash!, block.ParentHash);
         }
         _invalidChainTracker.SetChildParent(block.Hash!, block.ParentHash!);
+
         return result;
     }
 
     public bool ValidateProcessedBlock(Block block, TxReceipt[] receipts, Block suggestedBlock)
     {
-        return ValidateProcessedBlock(block, receipts, suggestedBlock, out _);
-    }
-    public bool ValidateProcessedBlock(Block processedBlock, TxReceipt[] receipts, Block suggestedBlock, [NotNullWhen(false)] out string? error)
-    {
-        bool result = _baseValidator.ValidateProcessedBlock(processedBlock, receipts, suggestedBlock, out error);
+        bool result = _baseValidator.ValidateProcessedBlock(block, receipts, suggestedBlock);
         if (!result)
         {
-            if (_logger.IsTrace) _logger.Trace($"Intercepted a bad block {processedBlock}");
-            if (ShouldNotTrackInvalidation(processedBlock))
+            if (_logger.IsTrace) _logger.Trace($"Intercepted a bad block {block}");
+            if (ShouldNotTrackInvalidation(block))
             {
                 if (_logger.IsDebug) _logger.Debug($"Block invalidation should not be tracked");
-                return result;
+                return false;
             }
             _invalidChainTracker.OnInvalidBlock(suggestedBlock.Hash!, suggestedBlock.ParentHash);
         }
@@ -154,5 +137,4 @@ public class InvalidBlockInterceptor : IBlockValidator
 
         return !BlockValidator.ValidateWithdrawalsHashMatches(block, out _);
     }
-
 }

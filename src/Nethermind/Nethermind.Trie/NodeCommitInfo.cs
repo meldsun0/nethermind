@@ -2,31 +2,24 @@ namespace Nethermind.Trie
 {
     public readonly struct NodeCommitInfo
     {
-        public NodeCommitInfo(
-            TrieNode node,
-            in TreePath path
-        )
+        public NodeCommitInfo(TrieNode node)
         {
             ChildPositionAtParent = 0;
             Node = node;
-            Path = path;
             NodeParent = null;
         }
 
         public NodeCommitInfo(
             TrieNode node,
             TrieNode nodeParent,
-            in TreePath path,
             int childPositionAtParent)
         {
             ChildPositionAtParent = childPositionAtParent;
             Node = node;
-            Path = path;
             NodeParent = nodeParent;
         }
 
         public TrieNode? Node { get; }
-        public readonly TreePath Path;
 
         public TrieNode? NodeParent { get; }
 

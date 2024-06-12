@@ -280,20 +280,13 @@ public class DebugRpcModule : IDebugRpcModule
 
     public ResultWrapper<byte[][]> debug_getRawReceipts(BlockParameter blockParameter)
     {
-        TxReceipt[] receipts = _debugBridge.GetReceiptsForBlock(blockParameter);
+        var receipts = _debugBridge.GetReceiptsForBlock(blockParameter);
         if (receipts is null)
         {
             return ResultWrapper<byte[][]>.Fail($"Receipts are not found for block {blockParameter}", ErrorCodes.ResourceNotFound);
         }
 
-        if (!receipts.Any())
-        {
-            return ResultWrapper<byte[][]>.Success(Array.Empty<byte[]>());
-        }
-        RlpBehaviors behavior =
-            (_specProvider.GetReceiptSpec(receipts[0].BlockNumber).IsEip658Enabled ?
-            RlpBehaviors.Eip658Receipts : RlpBehaviors.None) | RlpBehaviors.SkipTypedWrapping;
-        var rlp = receipts.Select(tx => Rlp.Encode(tx, behavior).Bytes);
+        var rlp = receipts.Select(tx => Rlp.Encode(tx).Bytes);
         return ResultWrapper<byte[][]>.Success(rlp.ToArray());
     }
 

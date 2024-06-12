@@ -43,7 +43,6 @@ using Nethermind.Trie.Pruning;
 using NSubstitute;
 using NUnit.Framework;
 using Nethermind.Synchronization.SnapSync;
-using Nethermind.Trie;
 
 namespace Nethermind.Synchronization.Test
 {
@@ -336,8 +335,8 @@ namespace Nethermind.Synchronization.Test
                     : totalDifficultyBetterPeerStrategy;
 
                 StateReader reader = new StateReader(trieStore, codeDb, LimboLogs.Instance);
+
                 FullStateFinder fullStateFinder = new FullStateFinder(BlockTree, reader);
-                INodeStorage nodeStorage = new NodeStorage(dbProvider.StateDb);
 
                 SyncPeerPool = new SyncPeerPool(BlockTree, stats, bestPeerStrategy, _logManager, 25);
                 Pivot pivot = new(syncConfig);
@@ -358,7 +357,6 @@ namespace Nethermind.Synchronization.Test
                     );
                     Synchronizer = new MergeSynchronizer(
                         dbProvider,
-                        nodeStorage,
                         MainnetSpecProvider.Instance,
                         BlockTree,
                         NullReceiptStorage.Instance,
@@ -388,7 +386,6 @@ namespace Nethermind.Synchronization.Test
 
                     Synchronizer = new Synchronizer(
                         dbProvider,
-                        nodeStorage,
                         MainnetSpecProvider.Instance,
                         BlockTree,
                         NullReceiptStorage.Instance,

@@ -233,8 +233,6 @@ namespace Nethermind.Core
             public override bool CanConvertTo(ITypeDescriptorContext? context, Type? destinationType) =>
                 destinationType == typeof(string) || base.CanConvertTo(context, destinationType);
         }
-
-        public Hash256 ToAccountPath => Keccak.Compute(Bytes);
     }
 
     public readonly struct AddressAsKey(Address key) : IEquatable<AddressAsKey>

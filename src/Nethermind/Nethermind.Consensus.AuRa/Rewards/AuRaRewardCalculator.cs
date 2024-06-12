@@ -103,8 +103,9 @@ namespace Nethermind.Consensus.AuRa.Rewards
             return blockRewards;
         }
 
+        public static IRewardCalculatorSource GetSource(AuRaParameters auRaParameters, IAbiEncoder abiEncoder) => new AuRaRewardCalculatorSource(auRaParameters, abiEncoder);
 
-        public class AuRaRewardCalculatorSource : IRewardCalculatorSource
+        private class AuRaRewardCalculatorSource : IRewardCalculatorSource
         {
             private readonly AuRaParameters _auRaParameters;
             private readonly IAbiEncoder _abiEncoder;

@@ -4,7 +4,6 @@
 using Nethermind.Blockchain;
 using Nethermind.Blockchain.Find;
 using Nethermind.Consensus;
-using Nethermind.Consensus.Messages;
 using Nethermind.Consensus.Validators;
 using Nethermind.Core;
 using Nethermind.Core.Crypto;
@@ -41,24 +40,16 @@ namespace Nethermind.Merge.Plugin
 
         public override bool Validate(BlockHeader header, BlockHeader? parent, bool isUncle = false)
         {
-            return Validate(header, parent, isUncle, out _);
-        }
-        public override bool Validate(BlockHeader header, BlockHeader? parent, bool isUncle, out string? error)
-        {
-            error = null;
             return _poSSwitcher.IsPostMerge(header)
-                ? ValidateTheMergeChecks(header) && base.Validate(header, parent, isUncle, out error)
-                : ValidatePoWTotalDifficulty(header) && _preMergeHeaderValidator.Validate(header, parent, isUncle, out error);
+                ? ValidateTheMergeChecks(header) && base.Validate(header, parent, isUncle)
+                : ValidatePoWTotalDifficulty(header) && _preMergeHeaderValidator.Validate(header, parent, isUncle);
         }
-
-        public override bool Validate(BlockHeader header, bool isUncle, out string? error) =>
-            Validate(header, _blockTree.FindParentHeader(header, BlockTreeLookupOptions.None), isUncle, out error);
 
         public override bool Validate(BlockHeader header, bool isUncle = false) =>
             Validate(header, _blockTree.FindParentHeader(header, BlockTreeLookupOptions.None), isUncle);
 
-        protected override bool ValidateTotalDifficulty(BlockHeader parent, BlockHeader header, ref string? error) =>
-            _poSSwitcher.IsPostMerge(header) || base.ValidateTotalDifficulty(parent, header, ref error);
+        protected override bool ValidateTotalDifficulty(BlockHeader parent, BlockHeader header) =>
+            _poSSwitcher.IsPostMerge(header) || base.ValidateTotalDifficulty(parent, header);
 
         private bool ValidatePoWTotalDifficulty(BlockHeader header)
         {
@@ -73,31 +64,36 @@ namespace Nethermind.Merge.Plugin
 
         private bool ValidateTheMergeChecks(BlockHeader header)
         {
+            bool validDifficulty = true, validNonce = true, validUncles = true;
             (bool IsTerminal, bool IsPostMerge) switchInfo = _poSSwitcher.GetBlockConsensusInfo(header);
             bool terminalTotalDifficultyChecks = ValidateTerminalTotalDifficultyChecks(header, switchInfo.IsTerminal);
-            bool valid = !switchInfo.IsPostMerge ||
-                        ValidateHeaderField(header, header.Difficulty, UInt256.Zero, nameof(header.Difficulty))
-                        && ValidateHeaderField(header, header.Nonce, 0u, nameof(header.Nonce))
-                        && ValidateHeaderField(header, header.UnclesHash, Keccak.OfAnEmptySequenceRlp, nameof(header.UnclesHash));
+            if (switchInfo.IsPostMerge)
+            {
+                validDifficulty = ValidateHeaderField(header, header.Difficulty, UInt256.Zero, nameof(header.Difficulty));
+                validNonce = ValidateHeaderField(header, header.Nonce, 0u, nameof(header.Nonce));
+                validUncles = ValidateHeaderField(header, header.UnclesHash, Keccak.OfAnEmptySequenceRlp, nameof(header.UnclesHash));
+            }
 
-            return terminalTotalDifficultyChecks && valid;
+            return terminalTotalDifficultyChecks
+                   && validDifficulty
+                   && validNonce
+                   && validUncles;
         }
 
-        protected override bool ValidateExtraData(BlockHeader header, BlockHeader? parent, IReleaseSpec spec, bool isUncle, ref string? error)
+        protected override bool ValidateExtraData(BlockHeader header, BlockHeader? parent, IReleaseSpec spec, bool isUncle = false)
         {
             if (_poSSwitcher.IsPostMerge(header))
             {
                 if (header.ExtraData.Length > MaxExtraDataBytes)
                 {
                     if (_logger.IsWarn) _logger.Warn($"Invalid block header {header.ToString(BlockHeader.Format.Short)} - the {nameof(header.ExtraData)} exceeded max length of {MaxExtraDataBytes}.");
-                    error = BlockErrorMessages.InvalidExtraData;
                     return false;
                 }
 
                 return true;
             }
 
-            return base.ValidateExtraData(header, parent, spec, isUncle, ref error);
+            return base.ValidateExtraData(header, parent, spec, isUncle);
         }
 
         private bool ValidateTerminalTotalDifficultyChecks(BlockHeader header, bool isTerminal)

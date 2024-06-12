@@ -43,7 +43,6 @@ using Nethermind.Wallet;
 using Nethermind.Sockets;
 using Nethermind.Specs;
 using Nethermind.Synchronization.SnapSync;
-using Nethermind.Trie;
 using NSubstitute;
 using Nethermind.Blockchain.Blocks;
 
@@ -124,7 +123,6 @@ namespace Nethermind.Runner.Test.Ethereum
             };
 
             api.WorldStateManager = new ReadOnlyWorldStateManager(api.DbProvider, Substitute.For<IReadOnlyTrieStore>(), LimboLogs.Instance);
-            api.NodeStorageFactory = new NodeStorageFactory(INodeStorage.KeyScheme.HalfPath, LimboLogs.Instance);
             return api;
         }
     }

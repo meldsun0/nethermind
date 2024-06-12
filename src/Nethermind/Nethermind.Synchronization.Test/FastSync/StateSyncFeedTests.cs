@@ -58,10 +58,7 @@ namespace Nethermind.Synchronization.Test.FastSync
             dbContext.CompareTrees("BEFORE FIRST SYNC", true);
 
             SafeContext ctx = PrepareDownloader(dbContext, mock =>
-                mock.SetFilter(((MemDb)dbContext.RemoteStateDb).Keys.Take(((MemDb)dbContext.RemoteStateDb).Keys.Count - 4).Select(k =>
-                {
-                    return HashKey(k);
-                }).ToArray()));
+                mock.SetFilter(((MemDb)dbContext.RemoteStateDb).Keys.Take(((MemDb)dbContext.RemoteStateDb).Keys.Count - 4).Select(k => new Hash256(k)).ToArray()));
 
             await ActivateAndWait(ctx, dbContext, 1024);
 
@@ -73,7 +70,7 @@ namespace Nethermind.Synchronization.Test.FastSync
                     .Set(TestItem.Addresses[i], TrieScenarios.AccountJustState0.WithChangedBalance(i)
                         .WithChangedNonce(1)
                         .WithChangedCodeHash(Keccak.Compute(TrieScenarios.Code3))
-                        .WithChangedStorageRoot(SetStorage(dbContext.RemoteTrieStore, i, TestItem.Addresses[i]).RootHash));
+                        .WithChangedStorageRoot(SetStorage(dbContext.RemoteTrieStore, i).RootHash));
 
             dbContext.RemoteStateTree.UpdateRootHash();
             dbContext.RemoteStateTree.Commit(0);
@@ -91,7 +88,7 @@ namespace Nethermind.Synchronization.Test.FastSync
                     .Set(TestItem.Addresses[i], TrieScenarios.AccountJustState0.WithChangedBalance(i)
                         .WithChangedNonce(2)
                         .WithChangedCodeHash(Keccak.Compute(TrieScenarios.Code3))
-                        .WithChangedStorageRoot(SetStorage(dbContext.RemoteTrieStore, (byte)(i % 7), TestItem.Addresses[i]).RootHash));
+                        .WithChangedStorageRoot(SetStorage(dbContext.RemoteTrieStore, (byte)(i % 7)).RootHash));
 
             dbContext.RemoteStateTree.UpdateRootHash();
             dbContext.RemoteStateTree.Commit(0);
@@ -108,11 +105,6 @@ namespace Nethermind.Synchronization.Test.FastSync
 
             dbContext.CompareTrees("END");
             dbContext.AssertFlushed();
-        }
-
-        private static Hash256 HashKey(byte[] k)
-        {
-            return new Hash256(k[^32..]);
         }
 
         [Test]
@@ -217,7 +209,7 @@ namespace Nethermind.Synchronization.Test.FastSync
             dbContext.CompareTrees("BEFORE FIRST SYNC");
 
             SafeContext ctx = PrepareDownloader(dbContext, mock =>
-                mock.SetFilter(((MemDb)dbContext.RemoteStateDb).Keys.Take(((MemDb)dbContext.RemoteStateDb).Keys.Count - 1).Select(k => HashKey(k)).ToArray()));
+                mock.SetFilter(((MemDb)dbContext.RemoteStateDb).Keys.Take(((MemDb)dbContext.RemoteStateDb).Keys.Count - 1).Select(k => new Hash256(k)).ToArray()));
             await ActivateAndWait(ctx, dbContext, 1024, 1000);
 
 
@@ -261,7 +253,7 @@ namespace Nethermind.Synchronization.Test.FastSync
             testCase.SetupTree(dbContext.RemoteStateTree, dbContext.RemoteTrieStore, dbContext.RemoteCodeDb);
 
 
-            StorageTree remoteStorageTree = new(dbContext.RemoteTrieStore.GetTrieStore(TestItem.AddressD.ToAccountPath), Keccak.EmptyTreeHash, LimboLogs.Instance);
+            StorageTree remoteStorageTree = new(dbContext.RemoteTrieStore, Keccak.EmptyTreeHash, LimboLogs.Instance);
             remoteStorageTree.Set(
                 Bytes.FromHexString("eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeb000"), new byte[] { 1 });
             remoteStorageTree.Set(
@@ -319,7 +311,7 @@ namespace Nethermind.Synchronization.Test.FastSync
 
             dbContext.RemoteCodeDb.Set(Keccak.Compute(TrieScenarios.Code0), TrieScenarios.Code0);
 
-            StorageTree remoteStorageTree = new(dbContext.RemoteTrieStore.GetTrieStore(TestItem.AddressD.ToAccountPath), Keccak.EmptyTreeHash, _logManager);
+            StorageTree remoteStorageTree = new(dbContext.RemoteTrieStore, Keccak.EmptyTreeHash, _logManager);
             remoteStorageTree.Set((UInt256)1, new byte[] { 1 });
             remoteStorageTree.Commit(0);
 
@@ -343,7 +335,8 @@ namespace Nethermind.Synchronization.Test.FastSync
             DbContext dbContext = new(_logger, _logManager);
             testCase.SetupTree(dbContext.RemoteStateTree, dbContext.RemoteTrieStore, dbContext.RemoteCodeDb);
 
-            StorageTree remoteStorageTree = new(dbContext.RemoteTrieStore.GetTrieStore(TestItem.AddressD.ToAccountPath), Keccak.EmptyTreeHash, _logManager);
+
+            StorageTree remoteStorageTree = new(dbContext.RemoteTrieStore, Keccak.EmptyTreeHash, _logManager);
             remoteStorageTree.Set((UInt256)1, new byte[] { 1 });
             remoteStorageTree.Commit(0);
 
@@ -371,7 +364,7 @@ namespace Nethermind.Synchronization.Test.FastSync
 
             BlockTree blockTree = Build.A.BlockTree().OfChainLength((int)BlockTree.BestSuggestedHeader!.Number).TestObject;
 
-            ctx.TreeFeed = new(SyncMode.StateNodes, dbContext.LocalCodeDb, dbContext.LocalNodeStorage, blockTree, _logManager);
+            ctx.TreeFeed = new(SyncMode.StateNodes, dbContext.LocalCodeDb, dbContext.LocalStateDb, blockTree, _logManager);
             ctx.Feed = new StateSyncFeed(ctx.TreeFeed, _logManager);
             ctx.Feed.SyncModeSelectorOnChanged(SyncMode.StateNodes | SyncMode.FastBlocks);
             ctx.TreeFeed.ResetStateRoot(100, dbContext.RemoteStateTree.RootHash, SyncFeedState.Dormant);
@@ -394,7 +387,7 @@ namespace Nethermind.Synchronization.Test.FastSync
 
             BlockTree blockTree = Build.A.BlockTree().OfChainLength((int)BlockTree.BestSuggestedHeader!.Number).TestObject;
 
-            ctx.TreeFeed = new(SyncMode.StateNodes, dbContext.LocalCodeDb, dbContext.LocalNodeStorage, blockTree, _logManager);
+            ctx.TreeFeed = new(SyncMode.StateNodes, dbContext.LocalCodeDb, dbContext.LocalStateDb, blockTree, _logManager);
             ctx.Feed = new StateSyncFeed(ctx.TreeFeed, _logManager);
             ctx.Feed.SyncModeSelectorOnChanged(SyncMode.StateNodes | SyncMode.FastBlocks);
             ctx.TreeFeed.ResetStateRoot(100, dbContext.RemoteStateTree.RootHash, SyncFeedState.Dormant);

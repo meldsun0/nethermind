@@ -7,7 +7,6 @@ using System.Net.WebSockets;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Nethermind.Core.Authentication;
-using Nethermind.Core.Extensions;
 using Nethermind.JsonRpc.Modules;
 using Nethermind.Logging;
 using Nethermind.Serialization.Json;
@@ -80,9 +79,10 @@ namespace Nethermind.JsonRpc.WebSockets
 
         public void RemoveClient(string id)
         {
-            if (_clients.TryRemove(id, out ISocketsClient? client))
+            if (_clients.TryRemove(id, out ISocketsClient? client)
+                && client is IDisposable disposableClient)
             {
-                client.TryDispose();
+                disposableClient.Dispose();
             }
         }
 

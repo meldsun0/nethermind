@@ -4,7 +4,6 @@
 using Nethermind.Core;
 using Nethermind.Core.Specs;
 using Nethermind.TxPool;
-using System.Diagnostics.CodeAnalysis;
 
 namespace Nethermind.Optimism;
 
@@ -18,11 +17,5 @@ public class OptimismTxValidator : ITxValidator
     }
 
     public bool IsWellFormed(Transaction transaction, IReleaseSpec releaseSpec) =>
-        IsWellFormed(transaction, releaseSpec, out _);
-    public bool IsWellFormed(Transaction transaction, IReleaseSpec releaseSpec, [NotNullWhen(false)] out string? error)
-    {
-        error = null;
-        return transaction.Type == TxType.DepositTx || _txValidator.IsWellFormed(transaction, releaseSpec, out error);
-    }
-
+        transaction.Type == TxType.DepositTx || _txValidator.IsWellFormed(transaction, releaseSpec);
 }

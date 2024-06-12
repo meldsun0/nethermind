@@ -6,7 +6,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using FluentAssertions;
 using Nethermind.Core;
-using Nethermind.Core.Collections;
 using Nethermind.Core.Crypto;
 using Nethermind.Db;
 using Nethermind.Int256;
@@ -77,20 +76,13 @@ namespace Nethermind.Trie.Test
             public static PruningContext InMemoryAlwaysPrune
             {
                 [DebuggerStepThrough]
-                get => new(new TestPruningStrategy(true, true, 1000000), No.Persistence);
+                get => new(new TestPruningStrategy(true, true), No.Persistence);
             }
 
             public static PruningContext SetupWithPersistenceEveryEightBlocks
             {
                 [DebuggerStepThrough]
                 get => new(new TestPruningStrategy(true), new ConstantInterval(8));
-            }
-
-            public Hash256 CurrentStateRoot => _stateProvider.StateRoot;
-
-            public void VerifyNodeInCache(Hash256 root, bool hasStateRoot)
-            {
-                _trieStore.IsNodeCached(null, TreePath.Empty, root).Should().Be(hasStateRoot);
             }
 
             public PruningContext CreateAccount(int accountIndex)
@@ -114,11 +106,6 @@ namespace Nethermind.Trie.Test
                 return this;
             }
 
-            public PruningContext WithMaxDepth(int maxDepth)
-            {
-                _pruningStrategy.MaxDepth = maxDepth;
-                return this;
-            }
 
             public PruningContext PruneOldBlock()
             {
@@ -205,13 +192,6 @@ namespace Nethermind.Trie.Test
                 return this;
             }
 
-            public void WaitForPruning()
-            {
-                _trieStore.WaitForPruning();
-                _trieStore.Prune();
-                _trieStore.WaitForPruning();
-            }
-
             public PruningContext CommitEmptyBlock()
             {
                 Commit(); // same, just for better test readability
@@ -284,7 +264,7 @@ namespace Nethermind.Trie.Test
             //     B
             //  L1     L2
             // Then we read L2 from account 1 so that B is resolved from cache.
-            // When persisting account 2, storage should get persisted again.
+            // When persisting account 2, storage should not get persisted again.
 
             PruningContext.SnapshotEveryOtherBlockWithManualPruning
                 .CreateAccount(1)
@@ -310,7 +290,7 @@ namespace Nethermind.Trie.Test
                 .CommitEmptyBlock()
                 .PruneOldBlock()
                 .PruneOldBlock()
-                .VerifyPersisted(12);
+                .VerifyPersisted(9);
         }
 
         [Test]
@@ -368,7 +348,7 @@ namespace Nethermind.Trie.Test
         }
 
         [Test]
-        public void Two_accounts_adding_same_storage_in_same_block()
+        public void Two_accounts_adding_shared_storage_in_same_block()
         {
             PruningContext.SnapshotEveryOtherBlockWithManualPruning
                 .CreateAccount(1)
@@ -381,12 +361,12 @@ namespace Nethermind.Trie.Test
                 .CommitEmptyBlock()
                 .PruneOldBlock()
                 .PruneOldBlock()
-                .VerifyPersisted(9)
-                .VerifyCached(9);
+                .VerifyPersisted(6)
+                .VerifyCached(6);
         }
 
         [Test]
-        public void Two_accounts_adding_same_storage_in_same_block_then_one_account_storage_is_cleared()
+        public void Two_accounts_adding_shared_storage_in_same_block_then_one_account_storage_is_cleared()
         {
             PruningContext.SnapshotEveryOtherBlockWithManualPruning
                 .CreateAccount(1)
@@ -402,7 +382,7 @@ namespace Nethermind.Trie.Test
                 .PruneOldBlock()
                 .PruneOldBlock()
                 .VerifyPersisted(6)
-                .VerifyCached(11);
+                .VerifyCached(8);
         }
 
         [Test]
@@ -487,8 +467,9 @@ namespace Nethermind.Trie.Test
         [Test]
         public void Persist_alternate_commitset()
         {
+            Reorganization.MaxDepth = 3;
+
             PruningContext.InMemory
-                .WithMaxDepth(3)
                 .SetAccountBalance(1, 100)
                 .Commit()
                 .SetAccountBalance(2, 10)
@@ -550,8 +531,9 @@ namespace Nethermind.Trie.Test
         [Test]
         public void Persist_alternate_branch_commitset_of_length_2()
         {
+            Reorganization.MaxDepth = 3;
+
             PruningContext.InMemory
-                .WithMaxDepth(3)
                 .SetAccountBalance(1, 100)
                 .Commit()
                 .SetAccountBalance(2, 10)
@@ -590,8 +572,9 @@ namespace Nethermind.Trie.Test
         [Test]
         public void Should_persist_all_block_of_same_level_on_dispose()
         {
+            Reorganization.MaxDepth = 3;
+
             PruningContext.InMemory
-                .WithMaxDepth(3)
                 .SetAccountBalance(1, 100)
                 .Commit()
                 .SetAccountBalance(2, 10)
@@ -639,8 +622,9 @@ namespace Nethermind.Trie.Test
         [Test]
         public void Persist_with_2_alternate_branch_consecutive_of_each_other()
         {
+            Reorganization.MaxDepth = 3;
+
             PruningContext.InMemory
-                .WithMaxDepth(3)
                 .SetAccountBalance(1, 100)
                 .Commit()
                 .SetAccountBalance(2, 10)
@@ -683,8 +667,9 @@ namespace Nethermind.Trie.Test
         [Test]
         public void StorageRoot_reset_at_lower_level()
         {
+            Reorganization.MaxDepth = 3;
+
             PruningContext.InMemoryAlwaysPrune
-                .WithMaxDepth(3)
                 .SetAccountBalance(1, 100)
                 .SetAccountBalance(2, 100)
                 .Commit()
@@ -725,8 +710,9 @@ namespace Nethermind.Trie.Test
         [Test]
         public void StateRoot_reset_at_lower_level_and_accessed_at_just_the_right_time()
         {
+            Reorganization.MaxDepth = 2;
+
             PruningContext.InMemory
-                .WithMaxDepth(2)
                 .SetAccountBalance(1, 100)
                 .SetAccountBalance(2, 100)
                 .Commit()
@@ -758,61 +744,7 @@ namespace Nethermind.Trie.Test
                 .VerifyAccountBalance(1, 10)
                 .VerifyAccountBalance(2, 101)
                 .VerifyAccountBalance(3, 101);
-        }
 
-        [TestCase(10)]
-        [TestCase(64)]
-        [TestCase(100)]
-        public void Keep_OnlySomeDepth(int maxDepth)
-        {
-            PruningContext ctx = PruningContext.InMemory
-                .WithMaxDepth(maxDepth)
-                .TurnOnPrune();
-
-            using ArrayPoolList<Hash256> stateRoots = new ArrayPoolList<Hash256>(256);
-            for (int i = 0; i < 256; i++)
-            {
-                ctx
-                    .SetAccountBalance(0, (UInt256)i)
-                    .Commit();
-                stateRoots.Add(ctx.CurrentStateRoot);
-            }
-
-            ctx.WaitForPruning();
-
-            for (int i = 0; i < 256; i++)
-            {
-                ctx.VerifyNodeInCache(stateRoots[i], i >= 255 - maxDepth);
-            }
-        }
-
-        [Test]
-        public void When_Reorg_OldValueIsNotRemoved()
-        {
-            Reorganization.MaxDepth = 2;
-
-            PruningContext.InMemoryAlwaysPrune
-                .SetAccountBalance(1, 100)
-                .SetAccountBalance(2, 100)
-                .Commit()
-
-                .SetAccountBalance(3, 100)
-                .SetAccountBalance(4, 100)
-                .Commit()
-
-                .SaveBranchingPoint("revert_main")
-
-                .SetAccountBalance(4, 200)
-                .Commit()
-
-                .RestoreBranchingPoint("revert_main")
-
-                .Commit()
-                .Commit()
-                .Commit()
-                .Commit()
-
-                .VerifyAccountBalance(4, 100);
         }
     }
 }

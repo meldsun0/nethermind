@@ -62,9 +62,10 @@ namespace Nethermind.AccountAbstraction.Subscribe
         {
             ScheduleAction(async () =>
             {
-                using JsonRpcResult result = _includeUserOperations
-                   ? CreateSubscriptionMessage(new { UserOperation = new UserOperationRpc(e.UserOperation), e.EntryPoint })
-                   : CreateSubscriptionMessage(new { UserOperation = e.UserOperation.RequestId, e.EntryPoint });
+                JsonRpcResult result;
+                result = _includeUserOperations
+                    ? CreateSubscriptionMessage(new { UserOperation = new UserOperationRpc(e.UserOperation), e.EntryPoint })
+                    : CreateSubscriptionMessage(new { UserOperation = e.UserOperation.RequestId, e.EntryPoint });
                 await JsonRpcDuplexClient.SendJsonRpcResult(result);
                 if (_logger.IsTrace) _logger.Trace($"newReceivedUserOperations subscription {Id} printed hash of newReceivedUserOperations.");
             });

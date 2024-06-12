@@ -19,7 +19,7 @@ namespace Nethermind.Synchronization.Blocks
         private readonly Dictionary<int, int> _indexMapping;
         private readonly ISpecProvider _specProvider;
         private readonly PeerInfo _syncPeer;
-        private bool _downloadReceipts;
+        private readonly bool _downloadReceipts;
         private readonly IReceiptsRecovery _receiptsRecovery;
 
         public BlockDownloadContext(ISpecProvider specProvider, PeerInfo syncPeer, IReadOnlyList<BlockHeader?> headers,
@@ -66,7 +66,7 @@ namespace Nethermind.Synchronization.Blocks
 
         public Block[] Blocks { get; }
 
-        public TxReceipt[]?[]? ReceiptsForBlocks { get; private set; }
+        public TxReceipt[]?[]? ReceiptsForBlocks { get; }
 
         public List<Hash256> NonEmptyBlockHashes { get; }
 
@@ -131,15 +131,6 @@ namespace Nethermind.Synchronization.Blocks
             if (receiptsRoot != block.ReceiptsRoot)
             {
                 throw new EthSyncException($"Wrong receipts root for downloaded block {block.ToString(Block.Format.Short)}.");
-            }
-        }
-
-        public void SetDownloadReceipts()
-        {
-            if (!_downloadReceipts)
-            {
-                _downloadReceipts = true;
-                ReceiptsForBlocks = new TxReceipt[Blocks.Length][];
             }
         }
     }

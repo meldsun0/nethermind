@@ -19,7 +19,7 @@ public class HealingStateTree : StateTree
 
     [DebuggerStepThrough]
     public HealingStateTree(ITrieStore? store, ILogManager? logManager)
-        : base(store.GetTrieStore(null), logManager)
+        : base(store, logManager)
     {
     }
 
@@ -83,8 +83,7 @@ public class HealingStateTree : StateTree
             byte[]? rlp = _recovery.Recover(rlpHash, request).GetAwaiter().GetResult();
             if (rlp is not null)
             {
-                TreePath path = TreePath.FromNibble(pathPart);
-                TrieStore.Set(path, rlpHash, rlp);
+                TrieStore.Set(rlpHash, rlp);
                 return true;
             }
         }

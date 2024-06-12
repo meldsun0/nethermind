@@ -227,8 +227,7 @@ namespace Nethermind.Network.P2P.Subprotocols.Eth.V66
                 Logger.Trace($"  Max headers: {message.MaxHeaders}");
             }
 
-            using GetBlockHeadersMessage msg66 = new();
-            msg66.EthMessage = message;
+            GetBlockHeadersMessage msg66 = new() { EthMessage = message };
 
             return await SendRequestGenericEth66(
                 _headersRequests66,
@@ -246,8 +245,7 @@ namespace Nethermind.Network.P2P.Subprotocols.Eth.V66
                 Logger.Trace($"Blockhashes count: {message.BlockHashes.Count}");
             }
 
-            using GetBlockBodiesMessage msg66 = new();
-            msg66.EthMessage = message;
+            GetBlockBodiesMessage msg66 = new() { EthMessage = message };
             return await SendRequestGenericEth66(
                 _bodiesRequests66,
                 msg66,
@@ -264,8 +262,7 @@ namespace Nethermind.Network.P2P.Subprotocols.Eth.V66
                 Logger.Trace($"Keys count: {message.Hashes.Count}");
             }
 
-            using GetNodeDataMessage msg66 = new();
-            msg66.EthMessage = message;
+            GetNodeDataMessage msg66 = new() { EthMessage = message };
             return await SendRequestGenericEth66(
                 _nodeDataRequests66,
                 msg66,
@@ -282,8 +279,7 @@ namespace Nethermind.Network.P2P.Subprotocols.Eth.V66
                 Logger.Trace($"Hashes count: {message.Hashes.Count}");
             }
 
-            using GetReceiptsMessage msg66 = new();
-            msg66.EthMessage = message;
+            GetReceiptsMessage msg66 = new() { EthMessage = message };
             return await SendRequestGenericEth66(
                 _receiptsRequests66,
                 msg66,

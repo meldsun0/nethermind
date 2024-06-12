@@ -9,7 +9,6 @@ using Nethermind.Blockchain.Synchronization;
 using Nethermind.Consensus.Processing;
 using Nethermind.Core.Collections;
 using Nethermind.Core.Crypto;
-using Nethermind.Core.Extensions;
 using Nethermind.Logging;
 using Nethermind.Synchronization.Peers;
 
@@ -76,7 +75,6 @@ public abstract class TrieNodeRecovery<TRequest> : ITrieNodeRecovery<TRequest>
             keyRecovery.Task = RecoverRlpFromPeer(rlpHash, keyRecovery, request, cts);
         }
 
-        request.TryDispose();
         return keyRecoveries;
     }
 

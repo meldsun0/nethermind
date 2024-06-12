@@ -6,7 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Nethermind.JsonRpc
 {
-    public readonly struct JsonRpcResult : IDisposable
+    public readonly struct JsonRpcResult
     {
         [MemberNotNullWhen(true, nameof(BatchedResponses))]
         [MemberNotNullWhen(false, nameof(SingleResponse))]
@@ -54,12 +54,6 @@ namespace Nethermind.JsonRpc
             {
                 Response?.Dispose();
             }
-        }
-
-        public void Dispose()
-        {
-            SingleResponse?.Dispose();
-            BatchedResponses?.Dispose();
         }
     }
 }

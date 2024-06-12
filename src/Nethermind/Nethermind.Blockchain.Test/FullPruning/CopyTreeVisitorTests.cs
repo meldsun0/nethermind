@@ -25,17 +25,8 @@ using NUnit.Framework;
 namespace Nethermind.Blockchain.Test.FullPruning
 {
     [Parallelizable(ParallelScope.All)]
-    [TestFixture(INodeStorage.KeyScheme.HalfPath)]
-    [TestFixture(INodeStorage.KeyScheme.Hash)]
     public class CopyTreeVisitorTests
     {
-        private readonly INodeStorage.KeyScheme _keyScheme;
-
-        public CopyTreeVisitorTests(INodeStorage.KeyScheme scheme)
-        {
-            _keyScheme = scheme;
-        }
-
         [TestCase(0, 1)]
         [TestCase(0, 8)]
         [TestCase(1, 1)]
@@ -65,7 +56,7 @@ namespace Nethermind.Blockchain.Test.FullPruning
             clonedDb.Values.Should().BeEquivalentTo(values);
 
             clonedDb.KeyWasWrittenWithFlags(keys[0], WriteFlags.LowPriority);
-            trieDb.KeyWasReadWithFlags(keys[0], ReadFlags.SkipDuplicateRead | ReadFlags.HintReadAhead);
+            trieDb.KeyWasReadWithFlags(keys[0], ReadFlags.SkipDuplicateRead | ReadFlags.HintCacheMiss);
         }
 
         [Test, Timeout(Timeout.MaxTestTime)]
@@ -83,27 +74,15 @@ namespace Nethermind.Blockchain.Test.FullPruning
             clonedDb.Count.Should().BeLessThan(trieDb.Count);
         }
 
-        private IPruningContext CopyDb(IPruningContext pruningContext, CancellationToken cancellationToken, MemDb trieDb, VisitingOptions? visitingOptions = null, WriteFlags writeFlags = WriteFlags.None)
+        private static IPruningContext CopyDb(IPruningContext pruningContext, CancellationToken cancellationToken, MemDb trieDb, VisitingOptions? visitingOptions = null, WriteFlags writeFlags = WriteFlags.None)
         {
             LimboLogs logManager = LimboLogs.Instance;
-            PatriciaTree trie = Build.A.Trie(new NodeStorage(trieDb, _keyScheme)).WithAccountsByIndex(0, 100).TestObject;
+            PatriciaTree trie = Build.A.Trie(trieDb).WithAccountsByIndex(0, 100).TestObject;
             IStateReader stateReader = new StateReader(new TrieStore(trieDb, logManager), new MemDb(), logManager);
 
-            if (_keyScheme == INodeStorage.KeyScheme.Hash)
-            {
-                NodeStorage nodeStorage = new NodeStorage(pruningContext, _keyScheme);
-                using CopyTreeVisitor<NoopTreePathContextWithStorage> copyTreeVisitor = new(nodeStorage, writeFlags, logManager, cancellationToken);
-                stateReader.RunTreeVisitor(copyTreeVisitor, trie.RootHash, visitingOptions);
-                copyTreeVisitor.Finish();
-            }
-            else
-            {
-                NodeStorage nodeStorage = new NodeStorage(pruningContext, _keyScheme);
-                using CopyTreeVisitor<TreePathContextWithStorage> copyTreeVisitor = new(nodeStorage, writeFlags, logManager, cancellationToken);
-                stateReader.RunTreeVisitor(copyTreeVisitor, trie.RootHash, visitingOptions);
-                copyTreeVisitor.Finish();
-            }
-
+            using CopyTreeVisitor copyTreeVisitor = new(pruningContext, writeFlags, logManager, cancellationToken);
+            stateReader.RunTreeVisitor(copyTreeVisitor, trie.RootHash, visitingOptions);
+            copyTreeVisitor.Finish();
             return pruningContext;
         }
 

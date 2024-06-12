@@ -27,7 +27,9 @@ using Nethermind.Logging;
 using Nethermind.Network;
 using Nethermind.Specs;
 using Nethermind.State.Proofs;
+using Nethermind.State.Repositories;
 using Nethermind.Stats.Model;
+using Nethermind.Db.Blooms;
 using Nethermind.Network.P2P.Subprotocols.Eth.V62.Messages;
 using Nethermind.Network.P2P.Subprotocols.Eth.V63.Messages;
 using Nethermind.Serialization.Rlp;
@@ -35,10 +37,11 @@ using Nethermind.Synchronization.Blocks;
 using Nethermind.Synchronization.ParallelSync;
 using Nethermind.Synchronization.Peers;
 using Nethermind.Synchronization.Reporting;
+using Nethermind.Synchronization.SnapSync;
+using Nethermind.Trie.Pruning;
 using NSubstitute;
 using NUnit.Framework;
 using BlockTree = Nethermind.Blockchain.BlockTree;
-using System.Diagnostics.CodeAnalysis;
 
 namespace Nethermind.Synchronization.Test
 {
@@ -482,35 +485,7 @@ namespace Nethermind.Synchronization.Test
                 return true;
             }
 
-            public bool ValidateOrphanedBlock(Block block, [NotNullWhen(false)] out string? error)
-            {
-                Thread.Sleep(1000);
-                error = null;
-                return true;
-            }
-
-            public bool ValidateSuggestedBlock(Block block, [NotNullWhen(false)] out string? error)
-            {
-                Thread.Sleep(1000);
-                error = null;
-                return true;
-            }
-
-            public bool ValidateProcessedBlock(Block processedBlock, TxReceipt[] receipts, Block suggestedBlock, [NotNullWhen(false)] out string? error)
-            {
-                Thread.Sleep(1000);
-                error = null;
-                return true;
-            }
-
-            public bool Validate(BlockHeader header, BlockHeader? parent, bool isUncle, [NotNullWhen(false)] out string? error)
-            {
-                Thread.Sleep(1000);
-                error = null;
-                return true;
-            }
-
-            public bool Validate(BlockHeader header, bool isUncle, [NotNullWhen(false)] out string? error)
+            public bool ValidateOrphanedBlock(Block block, out string? error)
             {
                 Thread.Sleep(1000);
                 error = null;

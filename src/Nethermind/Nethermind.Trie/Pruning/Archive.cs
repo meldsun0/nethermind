@@ -13,7 +13,5 @@ namespace Nethermind.Trie.Pruning
         {
             return true;
         }
-
-        public bool IsFullPruning => false;
     }
 }

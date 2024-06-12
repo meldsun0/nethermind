@@ -63,26 +63,22 @@ public class JsonRpcSocketsClient<TStream> : SocketClient<TStream>, IJsonRpcDupl
 
         await foreach (JsonRpcResult result in _jsonRpcProcessor.ProcessAsync(request, _jsonRpcContext))
         {
-            using (result)
+            stopwatch.Restart();
+
+            int singleResponseSize = await SendJsonRpcResult(result);
+            allResponsesSize += singleResponseSize;
+
+            if (result.IsCollection)
             {
-                stopwatch.Restart();
-
-                int singleResponseSize = await SendJsonRpcResult(result);
-                allResponsesSize += singleResponseSize;
-
-                if (result.IsCollection)
-                {
-                    long handlingTimeMicroseconds = stopwatch.ElapsedMicroseconds();
-                    _ = _jsonRpcLocalStats.ReportCall(new RpcReport("# collection serialization #", handlingTimeMicroseconds, true), handlingTimeMicroseconds, singleResponseSize);
-                }
-                else
-                {
-                    long handlingTimeMicroseconds = stopwatch.ElapsedMicroseconds();
-                    _ = _jsonRpcLocalStats.ReportCall(result.Report!.Value, handlingTimeMicroseconds, singleResponseSize);
-                }
-
-                stopwatch.Restart();
+                long handlingTimeMicroseconds = stopwatch.ElapsedMicroseconds();
+                _ = _jsonRpcLocalStats.ReportCall(new RpcReport("# collection serialization #", handlingTimeMicroseconds, true), handlingTimeMicroseconds, singleResponseSize);
             }
+            else
+            {
+                long handlingTimeMicroseconds = stopwatch.ElapsedMicroseconds();
+                _ = _jsonRpcLocalStats.ReportCall(result.Report!.Value, handlingTimeMicroseconds, singleResponseSize);
+            }
+            stopwatch.Restart();
         }
 
         IncrementBytesSentMetric(allResponsesSize);
@@ -124,27 +120,34 @@ public class JsonRpcSocketsClient<TStream> : SocketClient<TStream>, IJsonRpcDupl
                 int responseSize = 1;
                 bool isFirst = true;
                 await _stream.WriteAsync(_jsonOpeningBracket);
-                await using JsonRpcBatchResultAsyncEnumerator enumerator = result.BatchedResponses!.GetAsyncEnumerator(CancellationToken.None);
-                while (await enumerator.MoveNextAsync())
+                JsonRpcBatchResultAsyncEnumerator enumerator = result.BatchedResponses!.GetAsyncEnumerator(CancellationToken.None);
+                try
                 {
-                    JsonRpcResult.Entry entry = enumerator.Current;
-                    using (entry)
+                    while (await enumerator.MoveNextAsync())
                     {
-                        if (!isFirst)
+                        JsonRpcResult.Entry entry = enumerator.Current;
+                        using (entry)
                         {
-                            await _stream.WriteAsync(_jsonComma);
-                            responseSize += 1;
-                        }
-                        isFirst = false;
-                        responseSize += (int)await _jsonSerializer.SerializeAsync(_stream, result.Response, indented: false);
-                        _ = _jsonRpcLocalStats.ReportCall(entry.Report);
+                            if (!isFirst)
+                            {
+                                await _stream.WriteAsync(_jsonComma);
+                                responseSize += 1;
+                            }
+                            isFirst = false;
+                            responseSize += (int)await _jsonSerializer.SerializeAsync(_stream, result.Response, indented: false);
+                            _ = _jsonRpcLocalStats.ReportCall(entry.Report);
 
-                        // We reached the limit and don't want to responded to more request in the batch
-                        if (!_jsonRpcContext.IsAuthenticated && responseSize > _maxBatchResponseBodySize)
-                        {
-                            enumerator.IsStopped = true;
+                            // We reached the limit and don't want to responded to more request in the batch
+                            if (!_jsonRpcContext.IsAuthenticated && responseSize > _maxBatchResponseBodySize)
+                            {
+                                enumerator.IsStopped = true;
+                            }
                         }
                     }
+                }
+                finally
+                {
+                    await enumerator.DisposeAsync();
                 }
 
                 await _stream.WriteAsync(_jsonClosingBracket);
@@ -158,6 +161,7 @@ public class JsonRpcSocketsClient<TStream> : SocketClient<TStream>, IJsonRpcDupl
             {
                 int responseSize = (int)await _jsonSerializer.SerializeAsync(_stream, result.Response, indented: false);
                 responseSize += await _stream.WriteEndOfMessageAsync();
+
                 return responseSize;
             }
         }

@@ -9,7 +9,7 @@ using Nethermind.Core.Crypto;
 
 namespace Nethermind.Trie.Pruning
 {
-    public class NullTrieStore : IScopedTrieStore
+    public class NullTrieStore : IReadOnlyTrieStore
     {
         private NullTrieStore() { }
 
@@ -19,23 +19,33 @@ namespace Nethermind.Trie.Pruning
 
         public void FinishBlockCommit(TrieType trieType, long blockNumber, TrieNode? root, WriteFlags flags = WriteFlags.None) { }
 
-        public TrieNode FindCachedOrUnknown(in TreePath treePath, Hash256 hash) => new(NodeType.Unknown, hash);
+        public IReadOnlyTrieStore AsReadOnly(IKeyValueStore? keyValueStore = null) => this;
 
-        public byte[] LoadRlp(in TreePath treePath, Hash256 hash, ReadFlags flags = ReadFlags.None) => Array.Empty<byte>();
+        public event EventHandler<ReorgBoundaryReached> ReorgBoundaryReached
+        {
+            add { }
+            remove { }
+        }
 
-        public byte[]? TryLoadRlp(in TreePath path, Hash256 hash, ReadFlags flags = ReadFlags.None) => Array.Empty<byte>();
+        public IReadOnlyKeyValueStore TrieNodeRlpStore => null!;
 
-        public bool IsPersisted(in TreePath path, in ValueHash256 keccak) => true;
+        public TrieNode FindCachedOrUnknown(Hash256 hash) => new(NodeType.Unknown, hash);
 
-        public void Set(in TreePath path, in ValueHash256 keccak, byte[] rlp)
+        public byte[] TryLoadRlp(Hash256 hash, ReadFlags flags = ReadFlags.None) => null;
+
+        public byte[] LoadRlp(Hash256 hash, ReadFlags flags = ReadFlags.None) => Array.Empty<byte>();
+
+        public bool IsPersisted(in ValueHash256 keccak) => true;
+
+        public void Dispose() { }
+
+        public void Set(in ValueHash256 hash, byte[] rlp)
         {
         }
 
-        public ITrieNodeResolver GetStorageTrieNodeResolver(Hash256 storageRoot)
+        public bool HasRoot(Hash256 stateRoot)
         {
-            return this;
+            return stateRoot == Keccak.EmptyTreeHash;
         }
-
-        public INodeStorage.KeyScheme Scheme => INodeStorage.KeyScheme.HalfPath;
     }
 }

@@ -7,32 +7,18 @@ using System.Threading;
 
 namespace Nethermind.JsonRpc;
 
-public class JsonRpcBatchResult(Func<JsonRpcBatchResultAsyncEnumerator, CancellationToken, IAsyncEnumerator<JsonRpcResult.Entry>> innerEnumeratorFactory)
-    : IJsonRpcBatchResult
+public class JsonRpcBatchResult : IJsonRpcBatchResult
 {
-    private Action? _disposableAction;
+    private readonly Func<JsonRpcBatchResultAsyncEnumerator, CancellationToken, IAsyncEnumerator<JsonRpcResult.Entry>> _innerEnumeratorFactory;
+
+    public JsonRpcBatchResult(Func<JsonRpcBatchResultAsyncEnumerator, CancellationToken, IAsyncEnumerator<JsonRpcResult.Entry>> innerEnumeratorFactory)
+    {
+        _innerEnumeratorFactory = innerEnumeratorFactory;
+    }
 
     public JsonRpcBatchResultAsyncEnumerator GetAsyncEnumerator(CancellationToken cancellationToken = default) =>
-        new(innerEnumeratorFactory, cancellationToken);
+        new(_innerEnumeratorFactory, cancellationToken);
 
     IAsyncEnumerator<JsonRpcResult.Entry> IAsyncEnumerable<JsonRpcResult.Entry>.GetAsyncEnumerator(CancellationToken cancellationToken) =>
         GetAsyncEnumerator(cancellationToken);
-
-    public void AddDisposable(Action disposableAction)
-    {
-        if (_disposableAction is null)
-        {
-            _disposableAction = disposableAction;
-        }
-        else
-        {
-            _disposableAction += disposableAction;
-        }
-    }
-
-    public void Dispose()
-    {
-        _disposableAction?.Invoke();
-        _disposableAction = null;
-    }
 }

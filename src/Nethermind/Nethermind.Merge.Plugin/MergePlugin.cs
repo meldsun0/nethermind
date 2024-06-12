@@ -74,8 +74,6 @@ public partial class MergePlugin : IConsensusWrapperPlugin, ISynchronizationPlug
 
         _logger = _api.LogManager.GetClassLogger();
 
-        EnsureNotConflictingSettings();
-
         if (MergeEnabled)
         {
             if (_api.DbProvider is null) throw new ArgumentException(nameof(_api.DbProvider));
@@ -123,16 +121,6 @@ public partial class MergePlugin : IConsensusWrapperPlugin, ISynchronizationPlug
         }
 
         return Task.CompletedTask;
-    }
-
-    private void EnsureNotConflictingSettings()
-    {
-        if (!_mergeConfig.Enabled && _mergeConfig.TerminalTotalDifficulty is not null)
-        {
-            throw new InvalidConfigurationException(
-                $"{nameof(MergeConfig)}.{nameof(MergeConfig.TerminalTotalDifficulty)} cannot be set when {nameof(MergeConfig)}.{nameof(MergeConfig.Enabled)} is false.",
-                ExitCodes.ConflictingConfigurations);
-        }
     }
 
     internal static void MigrateSecondsPerSlot(IBlocksConfig blocksConfig, IMergeConfig mergeConfig)
@@ -441,7 +429,6 @@ public partial class MergePlugin : IConsensusWrapperPlugin, ISynchronizationPlug
 
             MergeSynchronizer synchronizer = new MergeSynchronizer(
                 _api.DbProvider,
-                _api.NodeStorageFactory.WrapKeyValueStore(_api.DbProvider.StateDb),
                 _api.SpecProvider!,
                 _api.BlockTree!,
                 _api.ReceiptStorage!,

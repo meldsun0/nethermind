@@ -29,8 +29,7 @@ namespace Nethermind.Serialization.Json
                 return false;
             }
 
-            return typeToConvert.GetGenericArguments()[0] == typeof(Address) ||
-                typeToConvert.GetGenericArguments()[0] == typeof(AddressAsKey);
+            return typeToConvert.GetGenericArguments()[0] == typeof(Address);
         }
 
         public override JsonConverter CreateConverter(
@@ -73,7 +72,7 @@ namespace Nethermind.Serialization.Json
                     throw new JsonException($"JsonTokenType was of type {reader.TokenType}, only objects are supported");
                 }
 
-                var dictionary = new Dictionary<TKey, TValue>();
+                var dictionary = new Dictionary<Address, TValue>();
                 while (reader.Read())
                 {
                     if (reader.TokenType == JsonTokenType.EndObject)
@@ -95,11 +94,7 @@ namespace Nethermind.Serialization.Json
 
                     reader.Read();
 
-                    TKey address = (typeof(TKey) == typeof(AddressAsKey)) ?
-                        (TKey)(object)(AddressAsKey)new Address(propertyName) :
-                        (TKey)(object)new Address(propertyName);
-
-                    dictionary.Add(address, JsonSerializer.Deserialize<TValue>(ref reader, options)!);
+                    dictionary.Add(new Address(propertyName), JsonSerializer.Deserialize<TValue>(ref reader, options)!);
                 }
 
                 return (Dictionary<TKey, TValue>)(object)dictionary;
@@ -114,10 +109,7 @@ namespace Nethermind.Serialization.Json
 
                 foreach ((TKey key, TValue value) in dictionary)
                 {
-                    Address address = (typeof(TKey) == typeof(AddressAsKey)) ?
-                        (Address)(AddressAsKey)(object)key :
-                        (Address)(object)key;
-
+                    Address address = (Address)(object)key;
                     string propertyName = address.ToString();
                     writer.WritePropertyName
                         (options.PropertyNamingPolicy?.ConvertName(propertyName) ?? propertyName);

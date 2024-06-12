@@ -11,6 +11,9 @@ namespace Nethermind.Evm.Tracing
 {
     public class AccessTxTracer : TxTracer
     {
+        private const long ColdVsWarmSLoadDelta = GasCostOf.ColdSLoad - GasCostOf.AccessStorageListEntry;
+        public const long MaxStorageAccessToOptimize = GasCostOf.AccessAccountListEntry / ColdVsWarmSLoadDelta;
+
         private readonly Address[] _addressesToOptimize;
 
         public override bool IsTracingReceipt => true;
@@ -52,8 +55,9 @@ namespace Nethermind.Evm.Tracing
             for (int i = 0; i < _addressesToOptimize.Length; i++)
             {
                 Address address = _addressesToOptimize[i];
-                if (dictionary.TryGetValue(address, out ISet<UInt256> set) && set.Count == 0)
+                if (dictionary.TryGetValue(address, out ISet<UInt256> set) && set.Count <= MaxStorageAccessToOptimize)
                 {
+                    GasSpent += (GasCostOf.ColdSLoad - GasCostOf.WarmStateRead) * set.Count;
                     dictionary.Remove(address);
                 }
             }

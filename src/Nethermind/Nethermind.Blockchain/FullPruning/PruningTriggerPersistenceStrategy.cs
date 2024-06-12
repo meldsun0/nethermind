@@ -67,8 +67,6 @@ public class PruningTriggerPersistenceStrategy : IPersistenceStrategy, IDisposab
         return inPruning;
     }
 
-    public bool IsFullPruning => _inPruning != 0;
-
     /// <inheritdoc/>
     public void Dispose()
     {

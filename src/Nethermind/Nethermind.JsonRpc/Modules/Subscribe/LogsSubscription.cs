@@ -80,7 +80,7 @@ namespace Nethermind.JsonRpc.Modules.Subscribe
 
                 foreach (var filterLog in filterLogs)
                 {
-                    using JsonRpcResult result = CreateSubscriptionMessage(filterLog);
+                    JsonRpcResult result = CreateSubscriptionMessage(filterLog);
                     await JsonRpcDuplexClient.SendJsonRpcResult(result);
                     if (_logger.IsTrace) _logger.Trace($"Logs subscription {Id} printed new log.");
                 }
