@@ -23,9 +23,9 @@ public readonly struct L1TxGasInfo(UInt256? l1Fee, UInt256? l1GasPrice, UInt256?
 public readonly struct L1BlockGasInfo
 {
     private readonly UInt256? _l1GasPrice;
-    private readonly UInt256 _l1BlobBaseFee;
-    private readonly UInt256 _l1BaseFeeScalar;
-    private readonly UInt256 _l1BlobBaseFeeScalar;
+    private readonly UInt256? _l1BlobBaseFee;
+    private readonly UInt256? _l1BaseFeeScalar;
+    private readonly UInt256? _l1BlobBaseFeeScalar;
     private readonly UInt256 _l1BaseFee;
     private readonly UInt256 _overhead;
     private readonly UInt256 _feeScalar;
@@ -92,13 +92,13 @@ public readonly struct L1BlockGasInfo
             if (_isFjord)
             {
                 UInt256 fastLzSize = OPL1CostHelper.ComputeFlzCompressLen(tx);
-                l1Fee = OPL1CostHelper.ComputeL1CostFjord(fastLzSize, _l1GasPrice.Value, _l1BlobBaseFee, _l1BaseFeeScalar, _l1BlobBaseFeeScalar, out UInt256 estimatedSize);
+                l1Fee = OPL1CostHelper.ComputeL1CostFjord(fastLzSize, _l1GasPrice.Value, _l1BlobBaseFee!.Value, _l1BaseFeeScalar!.Value, _l1BlobBaseFeeScalar!.Value, out UInt256 estimatedSize);
                 l1GasUsed = OPL1CostHelper.ComputeGasUsedFjord(estimatedSize);
             }
             else if (_isEcotone)
             {
                 l1GasUsed = OPL1CostHelper.ComputeDataGas(tx, _isPostRegolith);
-                l1Fee = OPL1CostHelper.ComputeL1CostEcotone(l1GasUsed.Value, _l1GasPrice.Value, _l1BlobBaseFee, _l1BaseFeeScalar, _l1BlobBaseFeeScalar);
+                l1Fee = OPL1CostHelper.ComputeL1CostEcotone(l1GasUsed.Value, _l1GasPrice.Value, _l1BlobBaseFee!.Value, _l1BaseFeeScalar!.Value, _l1BlobBaseFeeScalar!.Value);
             }
             else
             {
