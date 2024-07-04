@@ -1,8 +1,14 @@
 [
   {
     "network": "chiado",
-    "cl-client": "lodestar:chainsafe/lodestar:latest",
-    "el-client": "nethermind:nethermindeth/nethermind:master",
+    "cl-client": {
+      "name": "lodestar",
+      "image": "chainsafe/lodestar:latest"
+    },
+    "el-client": {
+      "name": "nethermind",
+      "image": "nethermindeth/nethermind:master"
+    },
     "checkpoint-sync-url": "http://139.144.26.89:4000/",
     "timeout": 180,
     "agent": "g6-standard-6"
