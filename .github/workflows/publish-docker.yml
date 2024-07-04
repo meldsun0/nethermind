@@ -3,14 +3,12 @@ name: Publish Docker image
 on:
   push:
     branches: [test/capitalized1]
-    paths: [src/Nethermind/**]
-
   
 jobs:
   publish-docker:
     name: Publish to Docker Hub
     runs-on: macos-latest-xlarge
     steps:
-           - name: Build and push image to Docker Hub (staging)
+      - name: Build and push image to Docker Hub (staging)
         run: |
           echo "123"
