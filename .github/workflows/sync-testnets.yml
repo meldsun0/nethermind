@@ -46,11 +46,13 @@ jobs:
 
       - name: Install sshpass
         run: sudo apt-get update && sudo apt-get install -y sshpass
-        
+
       - name: Create a Runner
         id: run-linode-action
-        uses: kamilchodola/linode-github-runner/.github/actions/linode-machine-manager@main
+        uses: cbermudez97/linode-github-runner/.github/actions/linode-machine-manager@main
         with:
+          organization: "${{ github.repository_owner }}"
+          repo_name: "${{ github.event.repository.name }}"
           linode_token: ${{ secrets.LINODE_TOKEN }}
           github_token: "${{ steps.gh-app.outputs.token }}"
           action: "create"
@@ -59,7 +61,7 @@ jobs:
           machine_type: "${{ matrix.client-network.agent }}"
           image: "linode/ubuntu24.04"
           tags: "core, self-hosted, dynamic"
-  
+
   sync-chain:
     needs: [setup-matrix, create_a_runner]
     strategy:
@@ -83,7 +85,7 @@ jobs:
       - name: Setup Go environment
         uses: actions/setup-go@v4.0.0
         with:
-          go-version: '1.20'
+          go-version: "1.20"
           check-latest: true
           cache: true
 
@@ -119,26 +121,26 @@ jobs:
           declare -A bad_logs
           bad_logs["Corrupt"]=1
           bad_logs["Exception"]=1
-      
+
           declare -A good_logs
           good_logs["Synced Chain Head"]=0
           good_logs["Processed"]=0
-      
+
           declare -A required_count
           required_count["Synced Chain Head"]=20
-          required_count["Processed"]=20      
-            
+          required_count["Processed"]=20
+
           counter=0
           found_bad_log=false
-      
+
           docker logs -f sedge-execution-client | while read -r line; do
             echo "$line"
-          
+
             if [[ "$line" == *"All done"* ]]; then
               echo "Unexpected termination detected: $line"
               exit 1
             fi
-      
+
             if [ "$found_bad_log" = true ]; then
               counter=$((counter + 1))
               if [ $counter -ge 100 ]; then
@@ -148,7 +150,7 @@ jobs:
                 continue
               fi
             fi
-      
+
             for bad_log in "${!bad_logs[@]}"; do
               if [[ "$line" == *"$bad_log"* ]]; then
                 echo "Error: $bad_log found in Docker logs."
@@ -156,13 +158,13 @@ jobs:
                 break
               fi
             done
-      
+
             for good_log in "${!good_logs[@]}"; do
               if [[ "$line" == *"$good_log"* ]]; then
                 good_logs["$good_log"]=$((good_logs["$good_log"]+1))
               fi
             done
-      
+
             # Check if all good logs have reached the required count
             all_reached_required_count=true
             for good_log in "${!good_logs[@]}"; do
@@ -171,17 +173,17 @@ jobs:
                 break
               fi
             done
-      
+
             if $all_reached_required_count; then
               echo "All required logs found."
               exit 0
             fi
           done
-          
+
       - name: Get Consensus Logs
         if: always()
         run: |
-          docker logs sedge-consensus-client      
+          docker logs sedge-consensus-client
 
   destroy_runner:
     needs: [setup-matrix, create_a_runner, sync-chain]
@@ -191,7 +193,7 @@ jobs:
       matrix:
         client-network: ${{fromJson(needs.setup-matrix.outputs.matrix)}}
     runs-on: ubuntu-latest
-    steps:    
+    steps:
       - name: Authenticate App
         id: gh-app
         uses: actions/create-github-app-token@v1
@@ -201,8 +203,10 @@ jobs:
 
       - name: Destroy a Runner
         id: run-linode-action
-        uses: kamilchodola/linode-github-runner/.github/actions/linode-machine-manager@main
+        uses: cbermudez97/linode-github-runner/.github/actions/linode-machine-manager@main
         with:
+          organization: "${{ github.repository_owner }}"
+          repo_name: "${{ github.event.repository.name }}"
           linode_token: ${{ secrets.LINODE_TOKEN }}
           github_token: "${{ steps.gh-app.outputs.token }}"
           action: "destroy"
